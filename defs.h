@@ -110,15 +110,17 @@ extern const int translation[][8];
 extern int counter;
 /* FUNCTIONS */
 // fen.c
-extern int parseFEN(char *fen, BOARD_STATE *bs);
-extern int genFEN(char *fen, BOARD_STATE *bs);
+extern int parseFEN(BOARD_STATE *bs, char *fen);
+extern int genFEN(BOARD_STATE *bs, char *fen);
 // main.c
 extern int sq64to120(int sq64);
 extern int sq120to64(int sq120);
+extern int boardIndexFlip(int i);
 extern int frToSq64(int file, int rank);
 extern int getType(int piece);
 extern int getColor(int piece);
 extern void getAlgebraic(char *sqfr, int sq120);
+extern void getCastlePermissions(char *sqStrPtr, int cperm);
 extern void resetBoard(BOARD_STATE *bs);
 extern int genLegalMoves(BOARD_STATE *bs, MOVE moves[]);
 extern int newBoardCheck(BOARD_STATE *bs, int sq, int cs);
@@ -145,3 +147,4 @@ extern U64 perft(BOARD_STATE *bs, int depth);
 extern U64 perft2(BOARD_STATE *bs, int depth);
 // test.c
 extern int testMoves();
+extern int testHelperFunctions();

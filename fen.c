@@ -93,7 +93,7 @@ int parseFEN(BOARD_STATE *bs, char *fen){
 	return 0;
 }
 
-int genFEN(char *fen, BOARD_STATE *bs){
+int genFEN(BOARD_STATE *bs, char *fen){
 	// f is the FEN string index
 	// TODO: I think I don't have to track f
 	// and can just advance the pointer?

@@ -707,7 +707,7 @@ void printBoard(BOARD_STATE *bs, int option){
 		// "eval for opponent" doesn't really make sense since it's not their turn
 		printf(BLU "eval for opponent: " reset "%d\n", eval(bs));
 		bs -> side = !(bs -> side);
-		genFEN(boardFEN, bs);
+		genFEN(bs, boardFEN);
 		printf(BLU "fen: " reset "%s\n", boardFEN);
 	}
 
@@ -766,7 +766,7 @@ int main(int argc, char *argv[]){
 		// checks
 		printf("Checking board initialization...\n");
 		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-		printf("Checking movegen test...\n\n");
+		printf("Checking movegen test...\n");
 		ASSERT(testMoves());
 		printf("Checking helper functions...\n\n");
 		ASSERT(testHelperFunctions());
@@ -804,7 +804,7 @@ int main(int argc, char *argv[]){
 			}
 		}
 		makeMove(bs, myMoves[b]);
-		genFEN(outputFEN, bs);
+		genFEN(bs, outputFEN);
 		printf("%s\n", outputFEN);
 	}
 
