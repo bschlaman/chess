@@ -3,10 +3,9 @@
 #include "defs.h"
 #include "colors.h"
 
-int parseFEN(char *fen, BOARD_STATE *bs){
-	// ranks start canonically at 8
-	// but files are letters so who cares
-	int i, num, piece, rank = 8, file = 0, sq64;
+int parseFEN(BOARD_STATE *bs, char *fen){
+	// starting at a8
+	int i, num, piece, rank = 8, file = 1, sq64;
 	while(*fen && rank > 0){
 		num = 1;
 		switch(*fen){
@@ -38,7 +37,7 @@ int parseFEN(char *fen, BOARD_STATE *bs){
 			case '/':
 			case ' ':
 				rank--;
-				file = 0;
+				file = 1;
 				fen++;
 				continue;
 
@@ -46,7 +45,6 @@ int parseFEN(char *fen, BOARD_STATE *bs){
 				printf(RED "Error with FEN\n" reset);
 				exit(1);
 				return -1;
-
 		}
 
 		if(piece == wK){ bs -> kingSq[WHITE] = sq64to120(frToSq64(file, rank)); }
@@ -87,8 +85,8 @@ int parseFEN(char *fen, BOARD_STATE *bs){
 	if(*fen != '-'){
 		file = fen[0] - 'a';
 		rank = fen[1] - '0';
-		ASSERT(file >= 0 && file <= 8);
-		ASSERT(rank >= 0 && rank <= 8);
+		ASSERT(file >= 1 && file <= 8);
+		ASSERT(rank >= 1 && rank <= 8);
 		bs -> enPas = sq64to120(frToSq64(file, rank));
 	}
 
@@ -99,13 +97,14 @@ int genFEN(char *fen, BOARD_STATE *bs){
 	// f is the FEN string index
 	// TODO: I think I don't have to track f
 	// and can just advance the pointer?
-	int i, f, piece, p, num;
+	int i, f, piece, num, boardIndex;
+	char p;
 	int *board = bs -> board;
 	// pieces
-	for(i = 0, f = 0, num = 0; i < 64 ; i++){
-		piece = board[sq64to120(i)];
+	for(i = 0, f = 0, num = 0 ; i < 64 ; i++){
+		piece = board[sq64to120(boardIndexFlip(i))];
 		p = pieceChar[piece];
-		ASSERT(piece >= 0 && piece <= 12);
+		ASSERT(piece >= EMPTY && piece <= bK);
 		if(piece == EMPTY){
 			num++;	
 		} else {

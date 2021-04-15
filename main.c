@@ -23,8 +23,15 @@ int sq120to64(int sq120){
 	return sq120 - 17 - 2 * (sq120 - sq120 % 10) / 10;;
 }
 
+// returns sq64 of index, but starting at the 8th rank
+// used for printing board and generating FEN
+int boardIndexFlip(int i){
+	return 56 + i - 2 * (i - i % 8);
+}
+
+// ranks and files are 1-8; e.g. a file is 1
 int frToSq64(int file, int rank){
-	return (8 - rank) * 8 + file;
+	return 8 * (rank - 1) + (file - 1);
 }
 
 void getAlgebraic(char *sqStrPtr, int sq120){
@@ -56,8 +63,7 @@ int getType(int piece){
 
 // TODO: this is risky for EMPTY squares
 int getColor(int piece){
-	// black is 7, 8, 9, 10, 11, 12
-	return piece > 6 && piece < 13;
+	return piece >= bP && piece <= bK;
 }
 
 void saveMove(MOVE moves[], int i, MOVE move){
@@ -762,6 +768,8 @@ int main(int argc, char *argv[]){
 		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
 		printf("Checking movegen test...\n\n");
 		ASSERT(testMoves());
+		printf("Checking helper functions...\n\n");
+		ASSERT(testHelperFunctions());
 
 		// print board
 		// char testFEN[] = "rnbqkbnr/pppp3p/8/5Pp1/8/8/PPPPP1PP/RN2K3 w KQkq g6"; // debug
@@ -769,7 +777,7 @@ int main(int argc, char *argv[]){
 		char testFEN[] = "rnbR1k1r/ppq1bppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK3 b KQ -"; // pos3
 		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // pos3
 		// char testFEN[] = "rnQq1k1r/pp2bppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R b KQ -"; // pos3
-		parseFEN(testFEN, bs);
+		parseFEN(bs, testFEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 		printBoard(bs, OPT_PINNED);
@@ -782,7 +790,7 @@ int main(int argc, char *argv[]){
 	else if(mode == FEN_MODE){
 		MOVE myMoves[255];
 		int evals[255];
-		parseFEN(inputFEN, bs);
+		parseFEN(bs, inputFEN);
 		int total = genLegalMoves(bs, myMoves);
 		int best = -11111;
 		int b = -1;
@@ -808,7 +816,7 @@ int main(int argc, char *argv[]){
 		ASSERT(testMoves());
 
 		char testFEN[] = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - -"; // pos3
-		parseFEN(START_FEN, bs);
+		parseFEN(bs, START_FEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
@@ -829,7 +837,7 @@ int main(int argc, char *argv[]){
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos3
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R b KQ -"; // pos3
 		char testFEN[] = "rnb2k1r/ppqPbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R w KQ -"; // pos3
-		parseFEN(testFEN, bs);
+		parseFEN(bs, testFEN);
 
 		MOVE myMoves[255];
 		int evals[255];
