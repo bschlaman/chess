@@ -14,31 +14,37 @@ int testMoves(){
 }
 
 int testHelperFunctions(){
-	int pass = false;
+	int pass = true;
 	pass = pass && sq64to120(26) == 53;
 	pass = pass && sq120to64(76) == 45;
 	pass = pass && frToSq64(4, 7) == 51;
 
 	char sqfr[3];
 	getAlgebraic(sqfr, 55);
-	pass = pass && strcmp(sqfr, "e4");
+	pass = pass && strcmp(sqfr, "e4") == 0;
 
 	char cperms[5];	
 	getCastlePermissions(cperms, 0);
-	pass = pass && strcmp(cperms, "-");
+	pass = pass && strcmp(cperms, "-") == 0;
 	getCastlePermissions(cperms, WKCA | BQCA | BKCA);
-	pass = pass && strcmp(cperms, "Kkq");
+	pass = pass && strcmp(cperms, "Kkq") == 0;
 
+	pass = pass && getType(bB) == BISHOP;
+	pass = pass && getColor(wP) == WHITE;
+
+	// TODO: just make the whole thing ASSERT statements
 	ASSERT(getType(bB) == BISHOP);
 	ASSERT(getColor(wP) == WHITE);
 	ASSERT(sq64to120(26) == 53);
 	ASSERT(sq120to64(76) == 45);
 	ASSERT(frToSq64(4, 7) == 51);
-	ASSERT(strcmp(sqfr, "e4"));
-	ASSERT(strcmp(cperms, "-"));
-	ASSERT(strcmp(cperms, "Kkq"));
-	ASSERT(getType(bB) == BISHOP);
-	ASSERT(getColor(wP) == WHITE);
+	getAlgebraic(sqfr, 55);
+	ASSERT(strcmp(sqfr, "e4") == 0);
+	getCastlePermissions(cperms, 0);
+	ASSERT(strcmp(cperms, "-") == 0);
+	getCastlePermissions(cperms, WKCA | BQCA | BKCA);
+	ASSERT(strcmp(cperms, "Kkq") == 0);
+	printf("%d\n", pass);
 
 	return pass;
 }

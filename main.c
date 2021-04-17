@@ -36,7 +36,7 @@ int frToSq64(int file, int rank){
 
 void getAlgebraic(char *sqStrPtr, int sq120){
 	int sq64 = sq120to64(sq120);
-	char sqAN[] = {(sq64 % 8) + 'a', '8' - ((sq64 - sq64 % 8) / 8), '\0'};;
+	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};;
 	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-' ; *p++ = '\0'; }
 	strcpy(sqStrPtr, sqAN);
 }
@@ -655,12 +655,14 @@ void resetBoard(BOARD_STATE *bs){
 }
 
 void printBoard(BOARD_STATE *bs, int option){
-	int i, rank, file, piece, sq64;
+	int i, index120, rank, file, piece, sq64;
 
 	if(option == OPT_120_BOARD){
 		printf(YEL " ---- 120 Board ---- \n" reset);
 		for(i = 0 ; i < 120 ; i++){
-			printf("%2d ", bs -> board[i]);
+			// same horizontal board flip logic as in boardIndexFlip()
+			index120 = 110 + i - 2 * (i - i % 10);
+			printf("%2d ", bs -> board[index120]);
 			if((i + 1) % 10 == 0){
 				printf("\n");
 			}
@@ -670,9 +672,9 @@ void printBoard(BOARD_STATE *bs, int option){
 
 	if(option == OPT_64_BOARD){
 		printf(YEL " ---- Game Board ---- \n" reset);
-		for(rank = 8 ; rank > 0 ; rank--){
-			printf("%d ", rank);
-			for(file = 0 ; file < 8 ; file++){
+		for(rank = 8 ; rank >= 1 ; rank--){
+			printf(RED "%d " reset, rank);
+			for(file = 1 ; file <= 8 ; file++){
 				piece = bs -> board[sq64to120(frToSq64(file, rank))];
 				printf("%2c", pieceChar[piece]);
 			}
@@ -777,7 +779,8 @@ int main(int argc, char *argv[]){
 		char testFEN[] = "rnbR1k1r/ppq1bppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK3 b KQ -"; // pos3
 		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // pos3
 		// char testFEN[] = "rnQq1k1r/pp2bppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R b KQ -"; // pos3
-		parseFEN(bs, testFEN);
+		parseFEN(bs, START_FEN);
+		printBoard(bs, OPT_120_BOARD);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 		printBoard(bs, OPT_PINNED);
