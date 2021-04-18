@@ -290,6 +290,7 @@ int newBoardCheck(BOARD_STATE *bs, int sq, int cs){
 }
 
 int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
+	printf("FOIEWHJFOIWE\n\n\n");
 	int i = 0, cs = sq, cs2, enPasCaptureFromSq = OFFBOARD, total = 0, d, dir, type, cpiece;
 	int *board = bs -> board;
 
@@ -573,7 +574,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		cs = sq + (1 - 2 * getColor(piece)) * 10 - 1;
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs])){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(cs - 90 + 70 * getColor(piece) > 0 && cs - 90 + 70 * getColor(piece) < 9){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -776,13 +777,7 @@ int main(int argc, char *argv[]){
 		ASSERT(testHelperFunctions());
 
 		// print board
-		// char testFEN[] = "rnbqkbnr/pppp3p/8/5Pp1/8/8/PPPPP1PP/RN2K3 w KQkq g6"; // debug
-		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
-		// char testFEN[] = "rnbR1k1r/ppq1bppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK3 b KQ -"; // pos3
-		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // pos3
-		// char testFEN[] = "rnQq1k1r/pp2bppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R b KQ -"; // pos3
-		char testFEN[] = "6n1/5ppp/2K5/8/k3PpQ1/2P4N/PP4PP/RNB2BR1 b - e3";
-		parseFEN(bs, testFEN);
+		parseFEN(bs, FEN5);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 		// printBoard(bs, OPT_PINNED);
@@ -820,12 +815,14 @@ int main(int argc, char *argv[]){
 		printf("Checking movegen test...\n\n");
 		ASSERT(testMoves());
 
-		char testFEN[] = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - -"; // pos3
-		parseFEN(bs, START_FEN);
+		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
+		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
+		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"; // pos4
+		parseFEN(bs, testFEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
-		int tot = (int)perft2(bs, 3);
+		int tot = (int)perft2(bs, 2);
 		// int tot = (int)perft2(bs, 5);
 		printf(RED "total: " reset "%i\n", tot);
 		printf(RED "func count: %d\n" reset, counter);
