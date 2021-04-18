@@ -230,8 +230,10 @@ int checkDir(int *board, int kingsq, int color){
 	return -1;
 }
 
+// TODO: get rid of this silliness
+// returns if the enpassant sq can be captured by the side to move
 int enPasCorrectColor(int enPas, int side){
-	return enPas - 40 - 30 * side >= 1 && enPas - 40 - 30 * side <= 8;
+	return enPas - 70 + 30 * side >= 1 && enPas - 70 + 30 * side <= 8;
 }
 
 int getPinDir(int kingsq, int pinsq){
@@ -536,9 +538,9 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 
 		// forward 1
 		// mapping {0,1} -> {-1,1} -> {-10,10}
-		cs = sq - (1 - 2 * getColor(piece)) * 10;
+		cs = sq + (1 - 2 * getColor(piece)) * 10;
 		if(board[cs] == EMPTY){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(cs - 90 + 70 * getColor(piece) > 0 && cs - 90 + 70 * getColor(piece) < 9){
 				saveMove(moves, total + offset, buildMove(sq, cs, 8)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 9)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 10)); total++;
@@ -548,18 +550,18 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 			}
 		}
 		// forward 2
-		if(sq - 80 + 50 * getColor(piece) > 0 && sq - 80 + 50 * getColor(piece) < 9){
-			cs = sq - (1 - 2 * getColor(piece)) * 20;
-			cs2 = sq - (1 - 2 * getColor(piece)) * 10;
+		if(sq - 30 - 50 * getColor(piece) > 0 && sq - 30 - 50 * getColor(piece) < 9){
+			cs = sq + (1 - 2 * getColor(piece)) * 20;
+			cs2 = sq + (1 - 2 * getColor(piece)) * 10;
 			if(board[cs] == EMPTY && board[cs2] == EMPTY){
 				saveMove(moves, total + offset, buildMove(sq, cs, 1)); total++;
 			}
 		}
 		// captures
-		cs = sq - (1 - 2 * getColor(piece)) * 10 + 1;
+		cs = sq + (1 - 2 * getColor(piece)) * 10 + 1;
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs])){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(cs - 90 + 70 * getColor(piece) > 0 && cs - 90 + 70 * getColor(piece) < 9){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -568,7 +570,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 				saveMove(moves, total + offset, buildMove(sq, cs, 4)); total++;
 			}
 		}
-		cs = sq - (1 - 2 * getColor(piece)) * 10 - 1;
+		cs = sq + (1 - 2 * getColor(piece)) * 10 - 1;
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs])){
 			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
@@ -584,13 +586,13 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		cs = bs -> enPas;
 		if(cs != OFFBOARD){
 			// enPasCaptureFromSq is the same as what it would look like to captrue TO that sq
-			enPasCaptureFromSq = cs - (1 - 2 * !getColor(piece)) * 10 + 1;
+			enPasCaptureFromSq = cs + (1 - 2 * !getColor(piece)) * 10 + 1;
 			if(sq == enPasCaptureFromSq \
 				&& enPasCorrectColor(cs, getColor(piece)) \
 				&& !epCheck(bs, sq, enPasCaptureFromSq-1)){
 				saveMove(moves, total + offset, buildMove(sq, cs, 5)); total++;
 			}
-			enPasCaptureFromSq = cs - (1 - 2 * !getColor(piece)) * 10 - 1;
+			enPasCaptureFromSq = cs + (1 - 2 * !getColor(piece)) * 10 - 1;
 			if(sq == enPasCaptureFromSq \
 				&& enPasCorrectColor(cs, getColor(piece)) \
 				&& !epCheck(bs, sq, enPasCaptureFromSq+1)){
@@ -604,33 +606,33 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 	if(piece == wK && checkDir(board, sq, WHITE) == -1){
 		// if cperm exists, not in check and not thru check and not thru piece
 		if(cperm & WKCA \
-			&& board[96] == EMPTY && board[97] == EMPTY \
+			&& board[F1] == EMPTY && board[G1] == EMPTY \
 			&& !newBoardCheck(bs, sq, sq + 1) \
 			&& !newBoardCheck(bs, sq, sq + 2)){
-			ASSERT(sq == 95);
+			ASSERT(sq == E1);
 			saveMove(moves, total + offset, buildMove(sq, sq + 2, 2)); total++;
 		}
 		if(cperm & WQCA \
-			&& board[92] == EMPTY && board[93] == EMPTY && board[94] == EMPTY \
+			&& board[B1] == EMPTY && board[C1] == EMPTY && board[D1] == EMPTY \
 			&& !newBoardCheck(bs, sq, sq - 1) \
 			&& !newBoardCheck(bs, sq, sq - 2)){
-			ASSERT(sq == 95);
+			ASSERT(sq == E1);
 			saveMove(moves, total + offset, buildMove(sq, sq - 2, 3)); total++;
 		}
 	}
 	else if(piece == bK && checkDir(board, sq, BLACK) == -1){
 		if(cperm & BKCA \
-			&& board[26] == EMPTY && board[27] == EMPTY \
+			&& board[F8] == EMPTY && board[G8] == EMPTY \
 			&& !newBoardCheck(bs, sq, sq + 1) \
 			&& !newBoardCheck(bs, sq, sq + 2)){
-			ASSERT(sq == 25);
+			ASSERT(sq == E8);
 			saveMove(moves, total + offset, buildMove(sq, sq + 2, 2)); total++;
 		}
 		if(cperm & BQCA \
-			&& board[22] == EMPTY && board[23] == EMPTY && board[24] == EMPTY \
+			&& board[B8] == EMPTY && board[C8] == EMPTY && board[D8] == EMPTY \
 			&& !newBoardCheck(bs, sq, sq - 1) \
 			&& !newBoardCheck(bs, sq, sq - 2)){
-			ASSERT(sq == 25);
+			ASSERT(sq == E8);
 			saveMove(moves, total + offset, buildMove(sq, sq - 2, 3)); total++;
 		}
 	}
@@ -649,8 +651,8 @@ void resetBoard(BOARD_STATE *bs){
 	bs -> castlePermission = 0;
 	bs -> enPas = OFFBOARD;
 	bs -> ply = 1;
-	bs -> kingSq[WHITE] = 95;
-	bs -> kingSq[BLACK] = 25;
+	bs -> kingSq[WHITE] = E1;
+	bs -> kingSq[BLACK] = E8;
 	bs -> pinned = 0ULL;
 }
 
