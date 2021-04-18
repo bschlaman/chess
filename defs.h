@@ -18,7 +18,7 @@ typedef enum { false, true } bool;
 #define START_FEN  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define MAXM_FEN "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -"
 // good for white king in check
-#define FEN2 "rnbq2n1/ppp2ppp/5Nk1/1b6/4PPp1/2P5/PP2K1PP/RNBQ1BR1 w KQkq f3 2 15"
+#define FEN2 "rnbq2n1/ppp2ppp/5Nk1/1b6/4PPp1/2P5/PP2K1PP/RNBQ1BR1 w - -"
 #define FEN3 "rnkR4/4bq2/p1n4r/Pp1PppNP/1P6/B1PP4/R2K1P2/1N1B4 b KQkq -"
 #define FEN4 "3k2Q1/7R/1p1p4/p1p2P2/2P1K3/1P3P2/P7/8 b - c6 12 51"
 // castling
@@ -33,6 +33,18 @@ enum {
     A6 = 71, B6, C6, D6, E6, F6, G6, H6,
     A7 = 81, B7, C7, D7, E7, F7, G7, H7,
     A8 = 91, B8, C8, D8, E8, F8, G8, H8, NO_SQ
+};
+
+// translate up, right, down, left, etc.
+enum {
+	TUP = 10,
+	TRT = 1,
+	TDN = -10,
+	TLF = -1,
+	TNW = 9,
+	TNE = 11,
+	TSE = -9,
+	TSW = -11
 };
 
 // 0 0 0 0
@@ -77,7 +89,7 @@ typedef struct {
 	int board[120];
 	int ply;
 
-	int side;
+	bool side;
 	int enPas;
 	int castlePermission;
 

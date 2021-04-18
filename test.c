@@ -15,12 +15,12 @@ int testMoves(){
 
 int testHelperFunctions(){
 	int pass = true;
-	pass = pass && sq64to120(26) == 53;
-	pass = pass && sq120to64(76) == 45;
+	pass = pass && sq64to120(26) == C4;
+	pass = pass && sq120to64(F6) == 45;
 	pass = pass && frToSq64(4, 7) == 51;
 
 	char sqfr[3];
-	getAlgebraic(sqfr, 55);
+	getAlgebraic(sqfr, E4);
 	pass = pass && strcmp(sqfr, "e4") == 0;
 
 	char cperms[5];	
@@ -35,16 +35,15 @@ int testHelperFunctions(){
 	// TODO: just make the whole thing ASSERT statements
 	ASSERT(getType(bB) == BISHOP);
 	ASSERT(getColor(wP) == WHITE);
-	ASSERT(sq64to120(26) == 53);
-	ASSERT(sq120to64(76) == 45);
+	ASSERT(sq64to120(26) == C4);
+	ASSERT(sq120to64(F6) == 45);
 	ASSERT(frToSq64(4, 7) == 51);
-	getAlgebraic(sqfr, 55);
+	getAlgebraic(sqfr, E4);
 	ASSERT(strcmp(sqfr, "e4") == 0);
 	getCastlePermissions(cperms, 0);
 	ASSERT(strcmp(cperms, "-") == 0);
 	getCastlePermissions(cperms, WKCA | BQCA | BKCA);
 	ASSERT(strcmp(cperms, "Kkq") == 0);
-	printf("%d\n", pass);
 
 	return pass;
 }

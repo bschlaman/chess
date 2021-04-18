@@ -179,11 +179,11 @@ U64 updatePinned(){
 	return 0ULL;
 }
 // returns the direction, 0 -> 15
-// 0 8 0 - 0
-// 9 0 4 3 -
-// 0 5 k 7 0
-// - 1 6 2 -
-// 0 - 0 - 0
+// - 8 - O -
+// 9 0 4 3 N
+// - 5 k 7 -
+// J 1 6 2 M
+// - K - L -
 int checkDir(int *board, int kingsq, int color){
 	int d, cpiece, cs;
 
@@ -196,10 +196,10 @@ int checkDir(int *board, int kingsq, int color){
 		}
 	}
 	// pawns
-	if(color == BLACK && board[kingsq +	9] == wP) return 1;
-	else if(color == BLACK && board[kingsq + 11] == wP) return 2;
-	if(color == WHITE && board[kingsq - 9] == bP) return 3;
-	else if(color == WHITE && board[kingsq - 11] == bP) return 0;
+	if     (color == BLACK && board[kingsq + TSW] == wP) return 1;
+	else if(color == BLACK && board[kingsq + TSE] == wP) return 2;
+	else if(color == WHITE && board[kingsq + TNE] == bP) return 3;
+	else if(color == WHITE && board[kingsq + TNW] == bP) return 0;
 	// ray
 	for(d = 0 ; d < 8 ; d++){
 		cs = kingsq;
@@ -237,15 +237,15 @@ int enPasCorrectColor(int enPas, int side){
 int getPinDir(int kingsq, int pinsq){
 	int diff = pinsq - kingsq;
 	if(diff > 0){
-		if(diff % 11 == 0) return 11;
-		if(diff % 10 == 0) return 10;
-		if(diff % 9 == 0) return 9;
-		if(diff % 1 == 0) return 1;
+		if(diff % TNE == 0) return TNE;
+		if(diff % TUP == 0) return TUP;
+		if(diff % TNW == 0) return TNW;
+		if(diff % TRT == 0) return TRT;
 	} else {
-		if(diff % 11 == 0) return -11;
-		if(diff % 10 == 0) return -10;
-		if(diff % 9 == 0) return -9;
-		if(diff % 1 == 0) return -1;
+		if(diff % TSW == 0) return TSW;
+		if(diff % TDN == 0) return TDN;
+		if(diff % TSE == 0) return TSE;
+		if(diff % TLF == 0) return TLF;
 	}
 	return 0;
 }
@@ -776,14 +776,14 @@ int main(int argc, char *argv[]){
 		// print board
 		// char testFEN[] = "rnbqkbnr/pppp3p/8/5Pp1/8/8/PPPPP1PP/RN2K3 w KQkq g6"; // debug
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
-		char testFEN[] = "rnbR1k1r/ppq1bppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK3 b KQ -"; // pos3
+		// char testFEN[] = "rnbR1k1r/ppq1bppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK3 b KQ -"; // pos3
 		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // pos3
 		// char testFEN[] = "rnQq1k1r/pp2bppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R b KQ -"; // pos3
-		parseFEN(bs, START_FEN);
-		printBoard(bs, OPT_120_BOARD);
+		char testFEN[] = "6n1/5ppp/2K5/8/k3PpQ1/2P4N/PP4PP/RNB2BR1 b - e3";
+		parseFEN(bs, testFEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
-		printBoard(bs, OPT_PINNED);
+		// printBoard(bs, OPT_PINNED);
 
 		// print moves
 		printLegalMoves(bs);

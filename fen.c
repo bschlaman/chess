@@ -83,7 +83,7 @@ int parseFEN(BOARD_STATE *bs, char *fen){
 
 	// en passant
 	if(*fen != '-'){
-		file = fen[0] - 'a';
+		file = fen[0] - 'a' + 1;
 		rank = fen[1] - '0';
 		ASSERT(file >= 1 && file <= 8);
 		ASSERT(rank >= 1 && rank <= 8);
