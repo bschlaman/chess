@@ -108,7 +108,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 		case 1:
 			// setting enPas
 			if(isPawn[piece] && abs(to - from) == 20){
-				bs -> enPas = to + (1 - 2 * getColor(piece)) * 10;
+				bs -> enPas = to - (1 - 2 * getColor(piece)) * 10;
 			}
 			break;
 		case 2:
@@ -133,7 +133,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 		case 5:
 			// en passant
 			// capture the enPas pawn
-			board[to + (1 - 2 * getColor(piece)) * 10] = EMPTY;
+			board[to - (1 - 2 * getColor(piece)) * 10] = EMPTY;
 			break;
 		case 8:
 			piece = getColor(piece) ? bN : wN; break;
@@ -159,20 +159,20 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	// TODO: these need to be elsewhere
 	// Rook moves, cperm check at the end is only for efficiency
 	if(piece == wR){
-		if(from == 98 && cperm & WKCA){ bs -> castlePermission &= 7; }
-		if(from == 91 && cperm & WQCA){ bs -> castlePermission &= 11; }
+		if(from == H1 && cperm & WKCA){ bs -> castlePermission &= 7; }
+		if(from == A1 && cperm & WQCA){ bs -> castlePermission &= 11; }
 	}
 	else if(piece == bR){
-		if(from == 28 && cperm & BKCA){ bs -> castlePermission &= 13; }
-		if(from == 21 && cperm & BQCA){ bs -> castlePermission &= 14; }
+		if(from == H8 && cperm & BKCA){ bs -> castlePermission &= 13; }
+		if(from == A8 && cperm & BQCA){ bs -> castlePermission &= 14; }
 	}
 	if(capturedPiece == wR){
-		if(to == 98 && cperm & WKCA){ bs -> castlePermission &= 7; }
-		if(to == 91 && cperm & WQCA){ bs -> castlePermission &= 11; }
+		if(to == H1 && cperm & WKCA){ bs -> castlePermission &= 7; }
+		if(to == A1 && cperm & WQCA){ bs -> castlePermission &= 11; }
 	}
 	else if(capturedPiece == bR){
-		if(to == 28 && cperm & BKCA){ bs -> castlePermission &= 13; }
-		if(to == 21 && cperm & BQCA){ bs -> castlePermission &= 14; }
+		if(to == H8 && cperm & BKCA){ bs -> castlePermission &= 13; }
+		if(to == A8 && cperm & BQCA){ bs -> castlePermission &= 14; }
 	}
 	// unset en passant sq
 	if(moveType != 1){
@@ -245,7 +245,7 @@ void undoMove(BOARD_STATE *bs){
 	if(moveType == 5){
 		board[to] = EMPTY;
 		// TODO: I use getColor elsewhere
-		board[to + (1 - 2 * !getColor(capturedPiece)) * 10] = capturedPiece;
+		board[to - (1 - 2 * !getColor(capturedPiece)) * 10] = capturedPiece;
 	}
 	// promotions
 	if(moveType >= 8 && moveType <= 15){
@@ -254,10 +254,10 @@ void undoMove(BOARD_STATE *bs){
 	// uncastling, move the rook
 	if(moveType == 2 || moveType == 3){
 		switch(to){
-			case 97: board[98] = wR; board[96] = EMPTY; break;
-			case 93: board[91] = wR; board[94] = EMPTY; break;
-			case 27: board[28] = bR; board[26] = EMPTY; break;
-			case 23: board[21] = bR; board[24] = EMPTY; break;
+			case G1: board[H1] = wR; board[F1] = EMPTY; break;
+			case C1: board[A1] = wR; board[D1] = EMPTY; break;
+			case G8: board[H8] = bR; board[F8] = EMPTY; break;
+			case C8: board[A8] = bR; board[D8] = EMPTY; break;
 			default:
 				printf(RED "Error uncastling: %d\n" reset, board[from]);
 				exit(1);
