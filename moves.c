@@ -91,7 +91,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	ms -> castlePermission = cperm;
 	ms -> pinned = bs -> pinned;
 	if(moveType == 5){
-		capturedPiece = bs -> board[to + (1 - 2 * bs -> side) * 10];
+		capturedPiece = bs -> board[to - (1 - 2 * bs -> side) * 10];
 	} else { capturedPiece = bs -> board[to]; }
 	ms -> capturedPiece = capturedPiece;
 	// 2) increment ply (index)
@@ -133,7 +133,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 		case 5:
 			// en passant
 			// capture the enPas pawn
-			board[to - (1 - 2 * getColor(piece)) * 10] = EMPTY;
+			board[to + (1 - 2 * getColor(piece)) * 10] = EMPTY;
 			break;
 		case 8:
 			piece = getColor(piece) ? bN : wN; break;
@@ -245,7 +245,7 @@ void undoMove(BOARD_STATE *bs){
 	if(moveType == 5){
 		board[to] = EMPTY;
 		// TODO: I use getColor elsewhere
-		board[to - (1 - 2 * !getColor(capturedPiece)) * 10] = capturedPiece;
+		board[to + (1 - 2 * getColor(capturedPiece)) * 10] = capturedPiece;
 	}
 	// promotions
 	if(moveType >= 8 && moveType <= 15){

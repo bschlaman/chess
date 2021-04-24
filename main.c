@@ -413,14 +413,14 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 		cs = bs -> enPas;
 		if(cs != OFFBOARD){
 			// enPasCaptureFromSq is the same as what it would look like to captrue TO that sq
-			enPasCaptureFromSq = cs - (1 - 2 * !getColor(piece)) * 10 + 1;
+			enPasCaptureFromSq = cs + (1 - 2 * !getColor(piece)) * 10 + 1;
 			if(sq == enPasCaptureFromSq \
 				&& enPasCorrectColor(cs, getColor(piece)) \
 				&& !epCheck(bs, sq, enPasCaptureFromSq-1) \
 				&& !newBoardCheck(bs, sq, cs)){
 				saveMove(moves, total + offset, buildMove(sq, cs, 5)); total++;
 			}
-			enPasCaptureFromSq = cs - (1 - 2 * !getColor(piece)) * 10 - 1;
+			enPasCaptureFromSq = cs + (1 - 2 * !getColor(piece)) * 10 - 1;
 			if(sq == enPasCaptureFromSq \
 				&& enPasCorrectColor(cs, getColor(piece)) \
 				&& !epCheck(bs, sq, enPasCaptureFromSq+1) \
@@ -783,8 +783,11 @@ int main(int argc, char *argv[]){
 
 	// NORMAL_MODE - print out all legal moves of a pos
 	if(mode == NORMAL_MODE){
+
+		char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 b - -"; // pos3
+		parseFEN(bs, testFEN);
+
 		// print board
-		parseFEN(bs, FEN5);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 		// printBoard(bs, OPT_PINNED);
@@ -819,7 +822,8 @@ int main(int argc, char *argv[]){
 	else if (mode == PERFT_MODE){
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
-		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"; // pos4
+		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
+		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
 		parseFEN(bs, testFEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
@@ -827,7 +831,6 @@ int main(int argc, char *argv[]){
 		int tot = (int)perft2(bs, 2);
 		// int tot = (int)perft2(bs, 5);
 		printf(RED "total: " reset "%i\n", tot);
-		printf(RED "func count: %d\n" reset, counter);
 	}
 
 	// SEARCH_MODE - output first layer of search
@@ -837,27 +840,59 @@ int main(int argc, char *argv[]){
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos3
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R b KQ -"; // pos3
 		// char testFEN[] = "rnb2k1r/ppqPbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R w KQ -"; // pos3
-		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"; // pos4
+		char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
 		parseFEN(bs, testFEN);
 
 		MOVE myMoves[255];
 		int evals[255];
 		int total = genLegalMoves(bs, myMoves);
+		printf(YEL "\t\tDepth: " reset "%d\n", 1);
+		printf(YEL "\t\tTotal moves: " reset "%d\n", total);
 		int t;
 
-		for(int m = 0 ; m < total ; m++){
-			printf("evaluating: ");
-			printMove(m, myMoves[m]);
-			makeMove(bs, myMoves[m]);
-			// evals[m] = -1 * treeSearch(bs, 2);
-			t = (int)perft(bs, 1);
-			printf(YEL "\t\tTotal moves: " reset "%d\n", t);
-			undoMove(bs);
-		}
-		int m = 0;
+		// for(int m = 0 ; m < total ; m++){
+		// 	printf("evaluating: ");
+		// 	printMove(m, myMoves[m]);
+		// 	makeMove(bs, myMoves[m]);
+		// 	// evals[m] = -1 * treeSearch(bs, 2);
+		// 	t = (int)perft(bs, 1);
+		// 	printf(YEL "\t\tTotal moves: " reset "%d\n", t);
+		// 	undoMove(bs);
+		// }
+
+		// depth 1
+		int m = 1;
 		printMove(m, myMoves[m]);
 		makeMove(bs, myMoves[m]);
+
+		// depth 2
+		m = 5;
+		total = genLegalMoves(bs, myMoves);
+		printf(YEL "\t\tDepth: " reset "%d\n", 2);
+		printf(YEL "\t\tTotal moves: " reset "%d\n", total);
 		printLegalMoves(bs);
+		printMove(m, myMoves[m]);
+		makeMove(bs, myMoves[m]);
+
+		// depth 3
+		m = 1;
+		total = genLegalMoves(bs, myMoves);
+		printf(YEL "\t\tDepth: " reset "%d\n", 3);
+		printf(YEL "\t\tTotal moves: " reset "%d\n", total);
+		printMove(m, myMoves[m]);
+		makeMove(bs, myMoves[m]);
+		// print board
+		printBoard(bs, OPT_64_BOARD);
+		printBoard(bs, OPT_BOARD_STATE);
+		printLegalMoves(bs);
+
+		// m = 1;
+		// total = genLegalMoves(bs, myMoves);
+		// printf(YEL "\t\tDepth: " reset "%d\n", 4);
+		// printf(YEL "\t\tTotal moves: " reset "%d\n", total);
+		// printLegalMoves(bs);
+		// printMove(m, myMoves[m]);
+		// makeMove(bs, myMoves[m]);
 
 		// printf(RED "\n====== AFTER UNDOS ========\n" reset);
 		// printBoard(bs, OPT_64_BOARD);
@@ -865,6 +900,5 @@ int main(int argc, char *argv[]){
 		// for(int m = 0 ; m < total ; m++){
 		// 	printf(CYN "move %d eval: " reset "%d\n", m, evals[m]);
 		// }
-		// printf(RED "checkDir count: %d\n" reset, counter);
 	}
 }
