@@ -13,7 +13,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 int genRandomMove(BOARD_STATE *bs);
 void printPieceMoves(BOARD_STATE *bs);
 void saveMove(MOVE moves[], int i, MOVE move);
-int checkDir(int *board, int kingsq, int color);
+int checkDir(int *board, int kingsq, bool color);
 
 int sq64to120(int sq64){
 	return sq64 + 21 + 2 * (sq64 - sq64 % 8) / 8;
@@ -62,14 +62,14 @@ int getType(int piece){
 }
 
 // TODO: this is risky for EMPTY squares
-int getColor(int piece){
+bool getColor(int piece){
 	return piece >= bP && piece <= bK;
 }
 
-int on2ndRank(int sq, int color){
+int on2ndRank(int sq, bool color){
 	return sq - 30 - 50 * color >= 1 && sq - 30 - 50 * color <= 8;
 }
-int on7thRank(int sq, int color){
+int on7thRank(int sq, bool color){
 	return on2ndRank(sq, !color);
 }
 
@@ -197,7 +197,7 @@ U64 updatePinned(){
 // - 5 k 7 -
 // J 1 6 2 M
 // - K - L -
-int checkDir(int *board, int kingsq, int color){
+int checkDir(int *board, int kingsq, bool color){
 	int d, cpiece, cs;
 
 	// knights
