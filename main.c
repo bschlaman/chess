@@ -66,6 +66,19 @@ int getColor(int piece){
 	return piece >= bP && piece <= bK;
 }
 
+int on2ndRank(int sq, int color){
+	return sq - 30 - 50 * color >= 1 && sq - 30 - 50 * color <= 8;
+}
+int on7thRank(int sq, int color){
+	return on2ndRank(sq, !color);
+}
+
+// TODO: get rid of this silliness
+// returns if the enpassant sq can be captured by the side to move
+int enPasCorrectColor(int enPas, int side){
+	return enPas - 70 + 30 * side >= 1 && enPas - 70 + 30 * side <= 8;
+}
+
 void saveMove(MOVE moves[], int i, MOVE move){
 	moves[i] = move;
 }
@@ -230,12 +243,6 @@ int checkDir(int *board, int kingsq, int color){
 	return -1;
 }
 
-// TODO: get rid of this silliness
-// returns if the enpassant sq can be captured by the side to move
-int enPasCorrectColor(int enPas, int side){
-	return enPas - 70 + 30 * side >= 1 && enPas - 70 + 30 * side <= 8;
-}
-
 int getPinDir(int kingsq, int pinsq){
 	int diff = pinsq - kingsq;
 	if(diff > 0){
@@ -331,7 +338,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 				cs = sq + (1 - 2 * getColor(piece)) * 10;
 				if(board[cs] == EMPTY && !newBoardCheck(bs, sq, cs)){ saveMove(moves, total + offset, buildMove(sq, cs, 0)); total++; }
 				// forward 2
-				if(sq - 30 - 50 * getColor(piece) > 0 && sq - 30 - 50 * getColor(piece) < 9){
+				if(on2ndRank(sq, getColor(piece))){
 					cs = sq + (1 - 2 * getColor(piece)) * 20;
 					cs2 = sq + (1 - 2 * getColor(piece)) * 10;
 					if(board[cs] == EMPTY && board[cs2] == EMPTY && !newBoardCheck(bs, sq, cs)){ saveMove(moves, total + offset, buildMove(sq, cs, 0)); total++; }
@@ -341,7 +348,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 			else {
 				cs = sq + dir;
 				if(board[cs] != EMPTY && !newBoardCheck(bs, sq, cs)){
-					if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+					if(on7thRank(sq, getColor(piece))){
 						saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 						saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 						saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -358,7 +365,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 		// mapping {0,1} -> {-1,1} -> {-10,10}
 		cs = sq + (1 - 2 * getColor(piece)) * 10;
 		if(board[cs] == EMPTY && !newBoardCheck(bs, sq, cs)){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 8)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 9)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 10)); total++;
@@ -368,7 +375,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 			}
 		}
 		// forward 2
-		if(sq - 30 - 50 * getColor(piece) > 0 && sq - 30 - 50 * getColor(piece) < 9){
+		if(on2ndRank(sq, getColor(piece))){
 			cs = sq + (1 - 2 * getColor(piece)) * 20;
 			cs2 = sq + (1 - 2 * getColor(piece)) * 10;
 			if(board[cs] == EMPTY && board[cs2] == EMPTY && !newBoardCheck(bs, sq, cs)){
@@ -380,7 +387,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs]) \
 			&& !newBoardCheck(bs, sq, cs)){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -393,7 +400,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs]) \
 			&& !newBoardCheck(bs, sq, cs)){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -513,7 +520,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 				cs = sq + (1 - 2 * getColor(piece)) * 10;
 				if(board[cs] == EMPTY){ saveMove(moves, total + offset, buildMove(sq, cs, 0)); total++; }
 				// forward 2
-				if(sq + 30 - 50 * getColor(piece) > 0 && sq - 30 - 50 * getColor(piece) < 9){
+				if(on2ndRank(sq, getColor(piece))){
 					cs = sq + (1 - 2 * getColor(piece)) * 20;
 					cs2 = sq + (1 - 2 * getColor(piece)) * 10;
 					if(board[cs] == EMPTY && board[cs2] == EMPTY){ saveMove(moves, total + offset, buildMove(sq, cs, 0)); total++; }
@@ -523,7 +530,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 			else {
 				cs = sq + dir;
 				if(board[cs] != EMPTY){
-					if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+					if(on7thRank(sq, getColor(piece))){
 						saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 						saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 						saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -540,7 +547,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		// mapping {0,1} -> {-1,1} -> {-10,10}
 		cs = sq + (1 - 2 * getColor(piece)) * 10;
 		if(board[cs] == EMPTY){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 8)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 9)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 10)); total++;
@@ -550,7 +557,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 			}
 		}
 		// forward 2
-		if(sq - 30 - 50 * getColor(piece) > 0 && sq - 30 - 50 * getColor(piece) < 9){
+		if(on2ndRank(sq, getColor(piece))){
 			cs = sq + (1 - 2 * getColor(piece)) * 20;
 			cs2 = sq + (1 - 2 * getColor(piece)) * 10;
 			if(board[cs] == EMPTY && board[cs2] == EMPTY){
@@ -561,7 +568,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		cs = sq + (1 - 2 * getColor(piece)) * 10 + 1;
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs])){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -573,7 +580,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		cs = sq + (1 - 2 * getColor(piece)) * 10 - 1;
 		if(board[cs] != EMPTY && board[cs] != OFFBOARD \
 			&& getColor(piece) != getColor(board[cs])){
-			if(cs - 20 - 70 * getColor(piece) > 0 && cs - 20 - 70 * getColor(piece) < 9){
+			if(on7thRank(sq, getColor(piece))){
 				saveMove(moves, total + offset, buildMove(sq, cs, 12)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 13)); total++;
 				saveMove(moves, total + offset, buildMove(sq, cs, 14)); total++;
@@ -765,16 +772,17 @@ int main(int argc, char *argv[]){
 
 	mode = parseArgs(inputFEN, argc, argv);
 
+	// tests
+	printf("Checking board initialization...\n");
+	ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
+	printf("Checking movegen test...\n");
+	ASSERT(testMoves());
+	printf("Checking helper functions...\n\n");
+	ASSERT(testHelperFunctions());
+
+
 	// NORMAL_MODE - print out all legal moves of a pos
 	if(mode == NORMAL_MODE){
-		// checks
-		printf("Checking board initialization...\n");
-		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-		printf("Checking movegen test...\n");
-		ASSERT(testMoves());
-		printf("Checking helper functions...\n\n");
-		ASSERT(testHelperFunctions());
-
 		// print board
 		parseFEN(bs, FEN5);
 		printBoard(bs, OPT_64_BOARD);
@@ -809,11 +817,6 @@ int main(int argc, char *argv[]){
 
 	// PERFT_MODE - checks number of positions
 	else if (mode == PERFT_MODE){
-		printf("Checking board initialization...\n");
-		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-		printf("Checking movegen test...\n\n");
-		ASSERT(testMoves());
-
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
 		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"; // pos4
@@ -829,10 +832,6 @@ int main(int argc, char *argv[]){
 
 	// SEARCH_MODE - output first layer of search
 	else if(mode == SEARCH_MODE){
-		printf("Checking board initialization...\n");
-		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-		printf("Checking movegen test...\n\n");
-		ASSERT(testMoves());
 		// char testFEN[] = "4qr1k/6p1/4p2p/p2p2b1/1p2P1Q1/1PrB3P/P2R1PP1/3R2K1 w - -"; // kasparov|karpov
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos3
@@ -852,9 +851,13 @@ int main(int argc, char *argv[]){
 			makeMove(bs, myMoves[m]);
 			// evals[m] = -1 * treeSearch(bs, 2);
 			t = (int)perft(bs, 1);
-			printf(YEL "\t\t\tTotal moves: " reset "%d\n", t);
+			printf(YEL "\t\tTotal moves: " reset "%d\n", t);
 			undoMove(bs);
 		}
+		int m = 0;
+		printMove(m, myMoves[m]);
+		makeMove(bs, myMoves[m]);
+		printLegalMoves(bs);
 
 		// printf(RED "\n====== AFTER UNDOS ========\n" reset);
 		// printBoard(bs, OPT_64_BOARD);

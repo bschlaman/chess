@@ -45,6 +45,9 @@ int testHelperFunctions(){
 	getCastlePermissions(cperms, WKCA | BQCA | BKCA);
 	ASSERT(strcmp(cperms, "Kkq") == 0);
 
+	ASSERT(on2ndRank(H7, BLACK));
+	ASSERT(on7thRank(A7, WHITE));
+
 	return pass;
 }
 // TODO: make test that makes and undoes many random moves

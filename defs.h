@@ -131,6 +131,8 @@ extern int boardIndexFlip(int i);
 extern int frToSq64(int file, int rank);
 extern int getType(int piece);
 extern int getColor(int piece);
+extern int on2ndRank(int sq, int color);
+extern int on7thRank(int sq, int color);
 extern void getAlgebraic(char *sqfr, int sq120);
 extern void getCastlePermissions(char *sqStrPtr, int cperm);
 extern void resetBoard(BOARD_STATE *bs);
