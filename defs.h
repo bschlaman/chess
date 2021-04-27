@@ -16,9 +16,12 @@ if(!(n)){ \
 typedef enum { false, true } bool;
 
 #define START_FEN  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+// position with max num legal moves (218)
 #define MAXM_FEN "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -"
-// good for white king in check
-#define FEN2 "rnbq2n1/ppp2ppp/5Nk1/1b6/4PPp1/2P5/PP2K1PP/RNBQ1BR1 w - -"
+// white king in check (6)
+#define FEN1 "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"
+// white pawn capture promotion (44)
+#define FEN2 "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"
 #define FEN3 "rnkR4/4bq2/p1n4r/Pp1PppNP/1P6/B1PP4/R2K1P2/1N1B4 b KQkq -"
 #define FEN4 "3k2Q1/7R/1p1p4/p1p2P2/2P1K3/1P3P2/P7/8 b - c6 12 51"
 // castling
@@ -105,7 +108,7 @@ typedef struct {
 
 
 // global mode
-enum { NORMAL_MODE, FEN_MODE, PERFT_MODE, SEARCH_MODE };
+enum { NORMAL_MODE, FEN_MODE, TEST_MODE, PERFT_MODE, SEARCH_MODE };
 // printBoard opts
 enum { OPT_64_BOARD, OPT_BOARD_STATE, OPT_120_BOARD, OPT_PINNED };
 

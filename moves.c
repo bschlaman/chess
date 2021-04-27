@@ -118,10 +118,10 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 			// i.e. KQkq -> rooks in the corners and kings on the proper squares
 			// castling, move the rook
 			switch(to){
-				case 97: board[98] = EMPTY; board[96] = wR; break;
-				case 93: board[91] = EMPTY; board[94] = wR; break;
-				case 27: board[28] = EMPTY; board[26] = bR; break;
-				case 23: board[21] = EMPTY; board[24] = bR; break;
+				case G1: board[H1] = EMPTY; board[F1] = wR; break;
+				case C1: board[A1] = EMPTY; board[D1] = wR; break;
+				case G8: board[H8] = EMPTY; board[F8] = bR; break;
+				case C8: board[A8] = EMPTY; board[D8] = bR; break;
 				default:
 					printf(RED "Error castling: %d\n" reset, from);
 					printf(RED "Error castling: %d\n" reset, board[from]);
@@ -133,7 +133,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 		case 5:
 			// en passant
 			// capture the enPas pawn
-			board[to + (1 - 2 * getColor(piece)) * 10] = EMPTY;
+			board[to - (1 - 2 * getColor(piece)) * 10] = EMPTY;
 			break;
 		case 8:
 			piece = getColor(piece) ? bN : wN; break;
@@ -180,7 +180,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	}
 	// unset cperms on king moves, castling or not
 	if(isKing[piece]){
-		if(getColor(piece)){
+		if(getColor(piece) == BLACK){
 			ASSERT(piece == bK);
 			// TODO: put these numbers in terms of WKCA, etc.
 			bs -> castlePermission &= 12;
@@ -200,7 +200,6 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	updatePins(bs, BLACK);
 	// is this the best way to switch sides?
 	bs -> side = !(bs -> side);
-	ASSERT(bs -> side == WHITE || bs -> side == BLACK);
 }
 
 void undoMove(BOARD_STATE *bs){
