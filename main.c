@@ -729,14 +729,13 @@ void printBoard(BOARD_STATE *bs, int option){
 
 int parseArgs(char *inputFEN, int argc, char *argv[]){
 	int c;
-  while((c = getopt(argc, argv, "spft:")) != -1){
+  while((c = getopt(argc, argv, "sptf:")) != -1){
 		switch(c){
 			case 'f':
 				strcpy(inputFEN, optarg);
 				return FEN_MODE;
 				break;
 			case 't':
-				strcpy(inputFEN, optarg);
 				return TEST_MODE;
 				break;
 			case 'p':
@@ -746,7 +745,7 @@ int parseArgs(char *inputFEN, int argc, char *argv[]){
 				return SEARCH_MODE;
 				break;
 			case '?':
-				if(optopt == 'f' || optopt == 't')
+				if(optopt == 'f')
 					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
 				else if(isprint(optopt))
 					fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -772,22 +771,15 @@ int main(int argc, char *argv[]){
 
 	mode = parseArgs(inputFEN, argc, argv);
 
-	// tests
-	printf("Checking board initialization...\n");
-	ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-	printf("Checking movegen test...\n");
-	ASSERT(testMoves());
-	printf("Checking helper functions...\n\n");
-	ASSERT(testHelperFunctions());
-
-
 	// NORMAL_MODE - print out all legal moves of a pos
 	if(mode == NORMAL_MODE){
 
-		char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3"; // 8
+		// char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3"; // 8
 		// char testFEN[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3"; // 5
 		// char testFEN[] = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3"; // 7
-		parseFEN(bs, FEN6);
+		// char testFEN[] = "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK -";
+		char testFEN[] = "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b QqKk -";
+		parseFEN(bs, testFEN);
 
 		// print board
 		printBoard(bs, OPT_64_BOARD);
@@ -820,13 +812,16 @@ int main(int argc, char *argv[]){
 		printf("%s\n", outputFEN);
 	}
 
-	// TEST_MODE - output perft(1) for given fen
+	// TEST_MODE - perform tests in test.c
 	else if(mode == TEST_MODE){
-		MOVE myMoves[255];
-		int evals[255];
-		parseFEN(bs, inputFEN);
-		int total = genLegalMoves(bs, myMoves);
-		printf("nodes: %d fen: %s\n", total, inputFEN);
+		printf("Checking board initialization...\n");
+		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
+		printf("Checking movegen test...\n");
+		ASSERT(testMoves());
+		printf("Checking helper functions...\n");
+		ASSERT(testHelperFunctions());
+		printf("Checking perft positions...\n");
+		ASSERT(testMoveGenPositions());
 	}
 
 	// PERFT_MODE - checks number of positions
@@ -835,25 +830,19 @@ int main(int argc, char *argv[]){
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
 		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
-		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
-		parseFEN(bs, testFEN);
+		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
+		char testFEN[] = "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK -";
+		parseFEN(bs, START_FEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
-		int tot = (int)perft2(bs, 5);
+		int tot = (int)perft2(bs, 6);
 		// int tot = (int)perft2(bs, 5);
 		printf(RED "total: " reset "%i\n", tot);
 	}
 
 	// SEARCH_MODE - output first layer of search
 	else if(mode == SEARCH_MODE){
-		// char testFEN[] = "4qr1k/6p1/4p2p/p2p2b1/1p2P1Q1/1PrB3P/P2R1PP1/3R2K1 w - -"; // kasparov|karpov
-		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
-		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos3
-		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R b KQ -"; // pos3
-		// char testFEN[] = "rnb2k1r/ppqPbppp/2p4B/8/2B5/8/PPP1NnPP/RN1QK2R w KQ -"; // pos3
-		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
-		char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -";
 		parseFEN(bs, START_FEN);
 
 		MOVE myMoves[255];
@@ -869,15 +858,23 @@ int main(int argc, char *argv[]){
 		// 	printf(YEL "\t\tTotal moves: " reset "%d\n", t);
 		// 	undoMove(bs);
 		// }
-		for(int m = 0 ; m < 500 ; m++){
+
+		for(int m = 0 ; m < 300 ; m++){
 			total = genLegalMoves(bs, myMoves);
+			if(total == 0){
+				printBoard(bs, OPT_64_BOARD);
+				printf("\nCHECKMATE ======================= \n");
+				genFEN(bs, outputFEN);
+				printf("%s\n", outputFEN);
+				exit(0);
+			}
 			randint = rand() % total;
 			makeMove(bs, myMoves[randint]);
 		}
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
-		for(int m = 0 ; m < 500 ; m++){
+		for(int m = 0 ; m < 300 ; m++){
 			undoMove(bs);
 		}
 

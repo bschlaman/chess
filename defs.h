@@ -104,9 +104,14 @@ typedef struct {
 
 	U64 pinned;
 
-	MOVE_IRREV history[200];
+	MOVE_IRREV history[500];
 } BOARD_STATE;
 
+typedef struct {
+	char fen[99];
+	int depth;
+	long nodes;
+} TEST_POSITION;
 
 // global mode
 enum { NORMAL_MODE, FEN_MODE, TEST_MODE, PERFT_MODE, SEARCH_MODE };
@@ -115,7 +120,6 @@ enum { OPT_64_BOARD, OPT_BOARD_STATE, OPT_120_BOARD, OPT_PINNED };
 
 /* MACROS */
 /* GLOBALS */
-extern int mode;
 extern const char pieceChar[];
 extern const char castleChar[];
 extern const int isPawn[];
@@ -124,7 +128,11 @@ extern const int OFFBOARD;
 extern const int numDirections[];
 extern const int translation[][8];
 extern int counter;
+extern int mode;
+extern TEST_POSITION tps[];
 /* FUNCTIONS */
+// data.c
+extern size_t tpsSize();
 // fen.c
 extern int parseFEN(BOARD_STATE *bs, char *fen);
 extern int genFEN(BOARD_STATE *bs, char *fen);
@@ -164,5 +172,6 @@ extern float treeSearch(BOARD_STATE *bs, int depth);
 extern U64 perft(BOARD_STATE *bs, int depth);
 extern U64 perft2(BOARD_STATE *bs, int depth);
 // test.c
-extern int testMoves();
-extern int testHelperFunctions();
+extern bool testMoves();
+extern bool testHelperFunctions();
+extern bool testMoveGenPositions();

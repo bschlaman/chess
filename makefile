@@ -1,6 +1,9 @@
 all:
 	cc main.c fen.c data.c init.c moves.c eval.c test.c -o out
 	./out
+test:
+	cc main.c fen.c data.c init.c moves.c eval.c test.c -o out
+	./out -t
 fen:
 	cc main.c fen.c data.c init.c moves.c eval.c test.c -o out
 	./out -f "${FEN}"

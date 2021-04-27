@@ -4,7 +4,7 @@
 #include "colors.h"
 #include "defs.h"
 
-int testMoves(){
+bool testMoves(){
 	BOARD_STATE *tbs = initGame();
 	MOVE moves[255];
 	parseFEN(tbs, MAXM_FEN);
@@ -13,7 +13,7 @@ int testMoves(){
 	return total == 218;
 }
 
-int testHelperFunctions(){
+bool testHelperFunctions(){
 	int pass = true;
 	pass = pass && sq64to120(26) == C4;
 	pass = pass && sq120to64(F6) == 45;
@@ -51,3 +51,18 @@ int testHelperFunctions(){
 	return pass;
 }
 // TODO: make test that makes and undoes many random moves
+
+bool testMoveGenPositions(){
+	// create test board state and loop thru test positions in data.c
+	BOARD_STATE *tbs = initGame();
+	int total;
+	for(int i = 0 ; i < tpsSize() ; i++){
+		resetBoard(tbs);
+		parseFEN(tbs, tps[i].fen);
+		printf("depth: %d, pos: %s\n", tps[i].depth, tps[i].fen);
+		total = perft2(tbs, tps[i].depth);
+		printf("wanted: %d, got: %d\n", tps[i].nodes, total);
+		ASSERT(total == tps[i].nodes);
+	}
+	return true;
+}
