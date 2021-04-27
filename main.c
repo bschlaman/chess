@@ -787,7 +787,7 @@ int main(int argc, char *argv[]){
 		char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3"; // 8
 		// char testFEN[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3"; // 5
 		// char testFEN[] = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3"; // 7
-		parseFEN(bs, testFEN);
+		parseFEN(bs, FEN6);
 
 		// print board
 		printBoard(bs, OPT_64_BOARD);
@@ -835,12 +835,12 @@ int main(int argc, char *argv[]){
 		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
 		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
 		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
-		char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -";
+		char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
 		parseFEN(bs, testFEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
-		int tot = (int)perft2(bs, 1);
+		int tot = (int)perft2(bs, 5);
 		// int tot = (int)perft2(bs, 5);
 		printf(RED "total: " reset "%i\n", tot);
 	}

@@ -259,6 +259,7 @@ void undoMove(BOARD_STATE *bs){
 			case C8: board[A8] = bR; board[D8] = EMPTY; break;
 			default:
 				printf(RED "Error uncastling: %d\n" reset, board[from]);
+				printf(RED "Error uncastling: %d\n" reset, board[to]);
 				exit(1);
 		}
 	}

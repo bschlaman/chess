@@ -26,6 +26,7 @@ typedef enum { false, true } bool;
 #define FEN4 "3k2Q1/7R/1p1p4/p1p2P2/2P1K3/1P3P2/P7/8 b - c6 12 51"
 // castling
 #define FEN5 "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R b KQkq f3"
+#define FEN6 "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -"
 
 enum {
     A1 = 21, B1, C1, D1, E1, F1, G1, H1,
