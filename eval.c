@@ -26,7 +26,7 @@ float eval(BOARD_STATE *bs){
 	int mobility = 0;
 
 	int *board = bs -> board;
-	int side = bs -> side;
+	int stm = bs -> stm;
 	int kings = 0;
 	int queens = 0;
 	int rooks = 0;
@@ -39,7 +39,7 @@ float eval(BOARD_STATE *bs){
 		sq = sq64to120(i);
 		piece = board[sq];
 
-		factor = 1 - 2 * (side ^ getColor(piece));
+		factor = 1 - 2 * (stm ^ getColor(piece));
 		if(piece == wK || piece == bK) kings += factor;
 		if(piece == wQ || piece == bQ) queens += factor;
 		if(piece == wR || piece == bR) rooks += factor;
@@ -52,7 +52,7 @@ float eval(BOARD_STATE *bs){
 		if(piece == bP && i > 23){
 			pawnEval += factor * pawnPosWeight[(i - i % 8) / 8];
 		}
-		if(piece != EMPTY && getColor(piece) == side) mobility += pieceMobility(bs, piece, sq);
+		if(piece != EMPTY && getColor(piece) == stm) mobility += pieceMobility(bs, piece, sq);
 	}
 	materialEval += kings * kingWeight;
 	materialEval += queens * queenWeight;
@@ -63,7 +63,7 @@ float eval(BOARD_STATE *bs){
 	mobilityEval = mobility * mobilityWeight;
 	// avoid checkmate
 	// TODO: make this better obviously
-	// if(bs -> side == BLACK){
+	// if(bs -> stm == BLACK){
 	// 	printf(RED "%d\n" reset, numLegalMoves);
 	// 	printf(RED "%d\n" reset, materialEval);
 	// } else {
@@ -106,7 +106,7 @@ float treeSearch(BOARD_STATE *bs, int depth){
 
 	// // debug
 	// if(depth == 2){
-	//  	printf(BLU "side to move: " reset "%s\n", bs -> side == WHITE ? "white" : "black");
+	//  	printf(BLU "side to move: " reset "%s\n", bs -> stm == WHITE ? "white" : "black");
 	// 	printLegalMoves(bs);
 	// 	// for(m = 0 ; m < 100 ; m++){
 	// 	// // for(m = 0 ; localLM[m][2] != -1 ; m++){
@@ -115,7 +115,7 @@ float treeSearch(BOARD_STATE *bs, int depth){
 	// 	// exit(0);
 	// }
 	// if(depth == 1 && bs -> board[72] == wQ){
-	//  	printf(BLU "side to move: " reset "%s\n", bs -> side == WHITE ? "white" : "black");
+	//  	printf(BLU "side to move: " reset "%s\n", bs -> stm == WHITE ? "white" : "black");
 	// 	printLegalMoves(bs);
 	// }
 

@@ -62,8 +62,8 @@ int parseFEN(BOARD_STATE *bs, char *fen){
 	updatePins(bs, WHITE);
 	updatePins(bs, BLACK);
 
-	// side
-	bs -> side = (*fen == 'w') ? WHITE : BLACK;
+	// stm
+	bs -> stm = (*fen == 'w') ? WHITE : BLACK;
 	fen += 2;
 
 	// castling
@@ -127,7 +127,7 @@ int genFEN(BOARD_STATE *bs, char *fen){
 		}
 	}
 	fen[f - 1] = ' ';
-	fen[f] = bs -> side ? 'b' : 'w';
+	fen[f] = bs -> stm ? 'b' : 'w';
 	fen[f + 1] = ' ';
 	f += 2;
 	

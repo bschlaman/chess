@@ -21,6 +21,18 @@ int counter = 0;
 // test positions
 TEST_POSITION tps[] = {
 	{
+		.fen = START_FEN,
+		.depth = 4,
+		.nodes = 197281,
+	},
+	// maximum legal moves
+	{
+		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
+		.depth = 1,
+		.nodes = 218,
+	},
+	// next 3 positions test en passant pins and check escapes
+	{
 		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
 		.depth = 1,
 		.nodes = 8,
@@ -35,10 +47,28 @@ TEST_POSITION tps[] = {
 		.depth = 1,
 		.nodes = 7,
 	},
+	// white king in check
+	{
+		.fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -",
+		.depth = 1,
+		.nodes = 6,
+	},
+	// castling thru check
+	{
+		.fen = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -",
+		.depth = 1,
+		.nodes = 8,
+	},
+	// white pawn capture promotion (pos 5 from wiki)
+	{
+		.fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -",
+		.depth = 2,
+		.nodes = 1486,
+	},
 	{
 		.fen = "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK -",
-		.nodes = 8,
 		.depth = 1,
+		.nodes = 8,
 	},
 	{
 		.fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w QqKk -",

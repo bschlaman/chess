@@ -4,16 +4,7 @@
 #include "colors.h"
 #include "defs.h"
 
-bool testMoves(){
-	BOARD_STATE *tbs = initGame();
-	MOVE moves[255];
-	parseFEN(tbs, MAXM_FEN);
-	int total = genLegalMoves(tbs, moves);
-	free(tbs);
-	return total == 218;
-}
-
-bool testHelperFunctions(){
+bool testUtilFunctions(){
 	int pass = true;
 	pass = pass && sq64to120(26) == C4;
 	pass = pass && sq120to64(F6) == 45;

@@ -19,7 +19,7 @@ MOVE buildMove(int from, int to, int moveType){
 // so that the reversible aspects can be used
 // both in make and unmake
 
-void updatePins(BOARD_STATE *bs, int side){
+void updatePins(BOARD_STATE *bs, bool side){
 	int kingsq = bs -> kingSq[side];
 	int *board = bs -> board;
 	int d, cs, cpiece;
@@ -91,7 +91,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	ms -> castlePermission = cperm;
 	ms -> pinned = bs -> pinned;
 	if(moveType == 5){
-		capturedPiece = bs -> board[to - (1 - 2 * bs -> side) * 10];
+		capturedPiece = bs -> board[to - (1 - 2 * bs -> stm) * 10];
 	} else { capturedPiece = bs -> board[to]; }
 	ms -> capturedPiece = capturedPiece;
 	// 2) increment ply (index)
@@ -188,7 +188,7 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 			ASSERT(piece == wK);
 			bs -> castlePermission &= 3;
 		}
-		bs -> kingSq[bs -> side] = to;
+		bs -> kingSq[bs -> stm] = to;
 	}
 
 	// setting the pieces, switching side, and updating pins
@@ -199,11 +199,11 @@ void makeMove(BOARD_STATE *bs, MOVE move){
 	updatePins(bs, WHITE);
 	updatePins(bs, BLACK);
 	// is this the best way to switch sides?
-	bs -> side = !(bs -> side);
+	bs -> stm = !(bs -> stm);
 }
 
 void undoMove(BOARD_STATE *bs){
-	int from, to, moveType, side;
+	int from, to, moveType, stm;
 
 	// 1) decrement ply
 	bs -> ply--;
@@ -217,13 +217,13 @@ void undoMove(BOARD_STATE *bs){
 
 	// 2) restore reversible
 	int *board = bs -> board;
-	side = bs -> side;
+	stm = bs -> stm;
 	// setting the pieces and switching side
 	board[from] = board[to];
 	board[to] = EMPTY;
-	if(isKing[board[from]]) bs -> kingSq[!side] = from;
+	if(isKing[board[from]]) bs -> kingSq[!stm] = from;
 	// is this the best way to switch sides?
-	bs -> side = !side;
+	bs -> stm = !stm;
 
 	// 3) restore irreversible
 	// 3.1) restore non-board stuff
@@ -248,7 +248,7 @@ void undoMove(BOARD_STATE *bs){
 	}
 	// promotions
 	if(moveType >= 8 && moveType <= 15){
-		board[from] = bs -> side ? bP : wP;
+		board[from] = bs -> stm ? bP : wP;
 	}
 	// uncastling, move the rook
 	if(moveType == 2 || moveType == 3){

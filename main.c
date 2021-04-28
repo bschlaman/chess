@@ -7,77 +7,14 @@
 #include "colors.h"
 
 
+void saveMove(MOVE moves[], int i, MOVE move);
 void printBoard(BOARD_STATE *bs, int options);
 int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset);
 int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset);
 int genRandomMove(BOARD_STATE *bs);
 void printPieceMoves(BOARD_STATE *bs);
-void saveMove(MOVE moves[], int i, MOVE move);
 int checkDir(int *board, int kingsq, bool color);
 
-int sq64to120(int sq64){
-	return sq64 + 21 + 2 * (sq64 - sq64 % 8) / 8;
-}
-
-int sq120to64(int sq120){
-	return sq120 - 17 - 2 * (sq120 - sq120 % 10) / 10;;
-}
-
-// returns sq64 of index, but starting at the 8th rank
-// used for printing board and generating FEN
-int boardIndexFlip(int i){
-	return 56 + i - 2 * (i - i % 8);
-}
-
-// ranks and files are 1-8; e.g. a file is 1
-int frToSq64(int file, int rank){
-	return 8 * (rank - 1) + (file - 1);
-}
-
-void getAlgebraic(char *sqStrPtr, int sq120){
-	int sq64 = sq120to64(sq120);
-	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};;
-	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-' ; *p++ = '\0'; }
-	strcpy(sqStrPtr, sqAN);
-}
-
-void getCastlePermissions(char *sqStrPtr, int cperm){
-	int j = 0;
-	if(cperm == 0){
-		sqStrPtr[j] = '-';
-		sqStrPtr[j+1] = '\0';
-	} else {
-		for(int i = 0 ; i < 4 ; i++){
-			if(1 << (3 - i) & cperm){
-				sqStrPtr[j] = castleChar[i];
-				j++;
-			}
-		}
-		sqStrPtr[j] = '\0';
-	}
-}
-
-int getType(int piece){
-	return (piece - 2) % 6;
-}
-
-// TODO: this is risky for EMPTY squares
-bool getColor(int piece){
-	return piece >= bP && piece <= bK;
-}
-
-int on2ndRank(int sq, bool color){
-	return sq - 30 - 50 * color >= 1 && sq - 30 - 50 * color <= 8;
-}
-int on7thRank(int sq, bool color){
-	return on2ndRank(sq, !color);
-}
-
-// TODO: get rid of this silliness
-// returns if the enpassant sq can be captured by the side to move
-int enPasCorrectColor(int enPas, int side){
-	return enPas - 70 + 30 * side >= 1 && enPas - 70 + 30 * side <= 8;
-}
 
 void saveMove(MOVE moves[], int i, MOVE move){
 	moves[i] = move;
@@ -85,17 +22,17 @@ void saveMove(MOVE moves[], int i, MOVE move){
 
 int genLegalMoves(BOARD_STATE *bs, MOVE moves[]){
 	int i, total = 0;
-	int sq, piece, side;
-	side = bs -> side;
-	int kingsq = bs -> kingSq[side];
-	int dir = checkDir(bs -> board, kingsq, side);
+	int sq, piece, stm;
+	stm = bs -> stm;
+	int kingsq = bs -> kingSq[stm];
+	int dir = checkDir(bs -> board, kingsq, stm);
 
 	if(dir == -1){
 		// if king not in check
 		for(i = 0 ; i < 64 ; i++){
 			sq = sq64to120(i);
 			piece = bs -> board[sq];
-			if(piece != EMPTY && getColor(piece) == side){
+			if(piece != EMPTY && getColor(piece) == stm){
 				total += pieceMoves(bs, piece, sq, moves, total);
 			}
 		}
@@ -107,7 +44,7 @@ int genLegalMoves(BOARD_STATE *bs, MOVE moves[]){
 		for(i = 0 ; i < 64 ; i++){
 			sq = sq64to120(i);
 			piece = bs -> board[sq];
-			if(piece != EMPTY && getColor(piece) == side){
+			if(piece != EMPTY && getColor(piece) == stm){
 				// move king
 				if(sq == kingsq) total += pieceMoves(bs, bs -> board[kingsq], kingsq, moves, total);
 				// capture piece or block
@@ -172,14 +109,14 @@ void printLegalMoves(BOARD_STATE *bs){
 // TODO: this is broken currently
 void printPieceMoves(BOARD_STATE *bs){
 	int i, m, piece, sq, total = 0;
-	int side = bs -> side;
+	bool stm = bs -> stm;
 	int from, to, moveType;
 	MOVE moves[255];
 
 	for(i = 0 ; i < 64 ; i++){
 		sq = sq64to120(i);
 		piece = bs -> board[sq];
-		if(piece != EMPTY && getColor(piece) == side){
+		if(piece != EMPTY && getColor(piece) == stm){
 			printf(GRN " == PIECE: %c\n" reset, pieceChar[piece]);
 			total += pieceMoves(bs, piece, sq, moves, total);
 			printLegalMoves(bs);
@@ -263,15 +200,15 @@ int getPinDir(int kingsq, int pinsq){
 int epCheck(BOARD_STATE *bs, int sq, int es){
 	// es = ep square
 	int *board = bs -> board;
-	int side = bs -> side;
-	int kingsq = bs -> kingSq[side];
+	bool stm = bs -> stm;
+	int kingsq = bs -> kingSq[stm];
 	// ASSERT(dir == getPinDir(kingsq, es));
-	int captureSq = es - (1 - 2 * side) * 10;
+	int captureSq = es - (1 - 2 * stm) * 10;
 	int capturedPiece = board[captureSq];
 	board[es] = board[sq];
 	board[sq] = EMPTY;
 	board[captureSq] = EMPTY;
-	int check = checkDir(board, kingsq, side) >= 0;
+	int check = checkDir(board, kingsq, stm) >= 0;
 	board[sq] = board[es];
 	board[es] = EMPTY;
 	board[captureSq] = capturedPiece;
@@ -282,13 +219,13 @@ int newBoardCheck(BOARD_STATE *bs, int sq, int cs){
 	int *board = bs -> board;
 	int check = false;
 	int capturedPiece = board[cs];
-	int side = bs -> side;
-	int kingsq = bs -> kingSq[side];
+	bool stm = bs -> stm;
+	int kingsq = bs -> kingSq[stm];
 
 	board[cs] = board[sq];
 	board[sq] = EMPTY;
 	if(kingsq == sq) kingsq = cs;
-	check = checkDir(board, kingsq, side) >= 0;
+	check = checkDir(board, kingsq, stm) >= 0;
 	board[sq] = board[cs];
 	board[cs] = capturedPiece;
 	return check;
@@ -327,7 +264,7 @@ int pieceCheckMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset
 
 		// pinned pawns
 		if(1ULL << sq120to64(sq) & bs -> pinned){
-			dir = getPinDir(bs -> kingSq[bs -> side], sq);
+			dir = getPinDir(bs -> kingSq[bs -> stm], sq);
 			// horizontal
 			if(abs(dir) == 1) return 0;
 			// vertical
@@ -466,7 +403,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 		if(1ULL << sq120to64(sq) & bs -> pinned){
 			if(type == KNIGHT) return 0;
 			else {
-				dir = getPinDir(bs -> kingSq[bs -> side], sq);
+				dir = getPinDir(bs -> kingSq[bs -> stm], sq);
 				if(type == ROOK && (abs(dir)==11||abs(dir)==9)) return 0;
 				else if(type == BISHOP && (abs(dir)==10||abs(dir)==1)) return 0;
 				else {
@@ -507,7 +444,7 @@ int pieceMoves(BOARD_STATE *bs, int piece, int sq, MOVE moves[], int offset){
 
 		// pinned pawns
 		if(1ULL << sq120to64(sq) & bs -> pinned){
-			dir = getPinDir(bs -> kingSq[bs -> side], sq);
+			dir = getPinDir(bs -> kingSq[bs -> stm], sq);
 			// horizontal
 			if(abs(dir) == 1) return 0;
 			// vertical
@@ -650,7 +587,7 @@ void resetBoard(BOARD_STATE *bs){
 	for(i = 0 ; i < 64 ; i++){
 		bs -> board[sq64to120(i)] = EMPTY;
 	}
-	bs -> side = NEITHER;
+	bs -> stm = NEITHER;
 	bs -> castlePermission = 0;
 	bs -> enPas = OFFBOARD;
 	bs -> ply = 1;
@@ -697,7 +634,7 @@ void printBoard(BOARD_STATE *bs, int option){
 		char sqAN[3];
 		char cperms[5];
 		char boardFEN[99];
-		printf(BLU "side to move: " reset "%s\n", bs -> side == WHITE ? "white" : "black");
+		printf(BLU "side to move: " reset "%s\n", bs -> stm == WHITE ? "white" : "black");
 		printf(BLU "ply: " reset "%d\n", bs -> ply);
 		getAlgebraic(sqAN, bs -> enPas);
 		getCastlePermissions(cperms, bs -> castlePermission);
@@ -708,12 +645,12 @@ void printBoard(BOARD_STATE *bs, int option){
 		printf(BLU "white kingSq: " reset "%d\n", bs -> kingSq[WHITE]);
 		printf(BLU "black kingSq: " reset "%d\n", bs -> kingSq[BLACK]);
 		printf(BLU "eval: " reset "%d\n", eval(bs));
-		bs -> side = !(bs -> side);
+		bs -> stm = !(bs -> stm);
 		// TODO: the num legal moves might be innacurate
-		// if just switching sides due to en passant?
+		// if just switching stms due to en passant?
 		// "eval for opponent" doesn't really make sense since it's not their turn
 		printf(BLU "eval for opponent: " reset "%d\n", eval(bs));
-		bs -> side = !(bs -> side);
+		bs -> stm = !(bs -> stm);
 		genFEN(bs, boardFEN);
 		printf(BLU "fen: " reset "%s\n", boardFEN);
 	}
@@ -773,11 +710,6 @@ int main(int argc, char *argv[]){
 
 	// NORMAL_MODE - print out all legal moves of a pos
 	if(mode == NORMAL_MODE){
-
-		// char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3"; // 8
-		// char testFEN[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3"; // 5
-		// char testFEN[] = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3"; // 7
-		// char testFEN[] = "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK -";
 		char testFEN[] = "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b QqKk -";
 		parseFEN(bs, testFEN);
 
@@ -816,28 +748,20 @@ int main(int argc, char *argv[]){
 	else if(mode == TEST_MODE){
 		printf("Checking board initialization...\n");
 		ASSERT(bs -> castlePermission == 0 && bs -> enPas == OFFBOARD);
-		printf("Checking movegen test...\n");
-		ASSERT(testMoves());
-		printf("Checking helper functions...\n");
-		ASSERT(testHelperFunctions());
+		printf("Checking util functions...\n");
+		ASSERT(testUtilFunctions());
 		printf("Checking perft positions...\n");
 		ASSERT(testMoveGenPositions());
 	}
 
 	// PERFT_MODE - checks number of positions
 	else if (mode == PERFT_MODE){
-		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"; // pos3
-		// char testFEN[] = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"; // pos5
-		// char testFEN[] = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
-		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
-		// char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
 		char testFEN[] = "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK -";
 		parseFEN(bs, START_FEN);
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
 		int tot = (int)perft2(bs, 6);
-		// int tot = (int)perft2(bs, 5);
 		printf(RED "total: " reset "%i\n", tot);
 	}
 

@@ -134,28 +134,29 @@ int sq120to64(int sq120){
 	return sq120 - 17 - 2 * (sq120 - sq120 % 10) / 10;;
 }
 
-int main(int argc, char *argv[]){
-	initRand();
-	// arg stuff
-	char inputFEN[99];
-	int res = parseArgs(inputFEN, argc, argv);
+int boardIndexFlip(int i){
+	return 176 + i - 2 * (i - i % 16);
+ printf("%d ", board[i]);
+	}
+	printf("\n");
+	printf("\n");
 
-	int moves[255][4];
-	genLeg(moves);
+	unsigned char b[12*16];
+	for(int i = 0; i<(12*16); i++) b[i] = (i-0x21)&0x88 ? 0 : 1;
+	for(int i = 0; i<(12*16); i++){
+		if(i%16 == 0) printf("\n");
+		printf("%d ", b[boardIndexFlip(i)]);
+	}
 
-	printf("%d ", sizeof(int));
-	printf("%d \n", sizeof(unsigned short));
+	printf("===============\n");
+	unsigned char a[2];
+	a[-1] = 5;
+	for(int i = -1; i<2; i++){
+		printf("%d ", a[i]);
+	}
 
-	int kingsq = 74;
-	int pinsq = 83;
-	int dir = getPinDir(kingsq, pinsq);
-	printf("k: %d\np: %d\ndir: %d\n", kingsq, pinsq, dir);
+	printf("\n");
 
-	U64 pinned = 0ULL;
-	pinned |= 1ULL << 25;
-	printPinned(pinned);
-	int and = 1ULL << sq120to64(52) & pinned;
-	printf("%d\n", and);
 
 	return 0;
 }

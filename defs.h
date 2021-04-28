@@ -16,17 +16,6 @@ if(!(n)){ \
 typedef enum { false, true } bool;
 
 #define START_FEN  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-// position with max num legal moves (218)
-#define MAXM_FEN "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -"
-// white king in check (6)
-#define FEN1 "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -"
-// white pawn capture promotion (44)
-#define FEN2 "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -"
-#define FEN3 "rnkR4/4bq2/p1n4r/Pp1PppNP/1P6/B1PP4/R2K1P2/1N1B4 b KQkq -"
-#define FEN4 "3k2Q1/7R/1p1p4/p1p2P2/2P1K3/1P3P2/P7/8 b - c6 12 51"
-// castling
-#define FEN5 "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R b KQkq f3"
-#define FEN6 "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -"
 
 enum {
     A1 = 21, B1, C1, D1, E1, F1, G1, H1,
@@ -41,14 +30,14 @@ enum {
 
 // translate up, right, down, left, etc.
 enum {
-	TUP = 10,
-	TRT = 1,
+	TUP =  10,
+	TRT =   1,
 	TDN = -10,
-	TLF = -1,
-	TNW = 9,
-	TNE = 11,
-	TSE = -9,
-	TSW = -11
+	TLF =  -1,
+	TNW =   9,
+	TNE =  11,
+	TSE =  -9,
+	TSW = -11,
 };
 
 // 0 0 0 0
@@ -93,7 +82,8 @@ typedef struct {
 	int board[120];
 	int ply;
 
-	bool side;
+	// side to move
+	bool stm;
 	int enPas;
 	int castlePermission;
 
@@ -136,17 +126,19 @@ extern size_t tpsSize();
 // fen.c
 extern int parseFEN(BOARD_STATE *bs, char *fen);
 extern int genFEN(BOARD_STATE *bs, char *fen);
-// main.c
+// utils.c
 extern int sq64to120(int sq64);
 extern int sq120to64(int sq120);
 extern int boardIndexFlip(int i);
 extern int frToSq64(int file, int rank);
-extern int getType(int piece);
-extern bool getColor(int piece);
-extern int on2ndRank(int sq, bool color);
-extern int on7thRank(int sq, bool color);
 extern void getAlgebraic(char *sqfr, int sq120);
 extern void getCastlePermissions(char *sqStrPtr, int cperm);
+extern int getType(int piece);
+extern bool getColor(int piece);
+extern bool on2ndRank(int sq, bool color);
+extern bool on7thRank(int sq, bool color);
+extern bool enPasCorrectColor(int enPas, bool stm);
+// main.c
 extern void resetBoard(BOARD_STATE *bs);
 extern int genLegalMoves(BOARD_STATE *bs, MOVE moves[]);
 extern int newBoardCheck(BOARD_STATE *bs, int sq, int cs);
@@ -161,7 +153,7 @@ extern int getFrom(MOVE m);
 extern int getTo(MOVE m);
 extern int getMType(MOVE m);
 extern MOVE buildMove(int from, int to, int movetype);
-extern void updatePins(BOARD_STATE *bs, int side);
+extern void updatePins(BOARD_STATE *bs, bool side);
 extern void makeMove(BOARD_STATE *bs, MOVE move);
 extern void undoMove(BOARD_STATE *bs);
 // eval.c
@@ -172,6 +164,5 @@ extern float treeSearch(BOARD_STATE *bs, int depth);
 extern U64 perft(BOARD_STATE *bs, int depth);
 extern U64 perft2(BOARD_STATE *bs, int depth);
 // test.c
-extern bool testMoves();
-extern bool testHelperFunctions();
+extern bool testUtilFunctions();
 extern bool testMoveGenPositions();
