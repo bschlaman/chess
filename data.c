@@ -57,7 +57,7 @@ TEST_POSITION tps[] = {
 	{
 		.fen = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -",
 		.depth = 1,
-		.nodes = 8,
+		.nodes = 21,
 	},
 	// white pawn capture promotion (pos 5 from wiki)
 	{

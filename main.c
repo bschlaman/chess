@@ -710,7 +710,7 @@ int main(int argc, char *argv[]){
 
 	// NORMAL_MODE - print out all legal moves of a pos
 	if(mode == NORMAL_MODE){
-		char testFEN[] = "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b QqKk -";
+		char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
 		parseFEN(bs, testFEN);
 
 		// print board
