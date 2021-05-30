@@ -136,27 +136,15 @@ int sq120to64(int sq120){
 
 int boardIndexFlip(int i){
 	return 176 + i - 2 * (i - i % 16);
- printf("%d ", board[i]);
-	}
-	printf("\n");
-	printf("\n");
+}
 
-	unsigned char b[12*16];
-	for(int i = 0; i<(12*16); i++) b[i] = (i-0x21)&0x88 ? 0 : 1;
-	for(int i = 0; i<(12*16); i++){
+int main(){
+	unsigned char b[0xBC];
+	for(int i = 0; i<(12*16); i++) b[i] = (i-0x22)&0x88 ? 0 : 1;
+	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? 0 : 1;
+	for(int i = 0; i<0xBC; i++){
 		if(i%16 == 0) printf("\n");
 		printf("%d ", b[boardIndexFlip(i)]);
 	}
-
-	printf("===============\n");
-	unsigned char a[2];
-	a[-1] = 5;
-	for(int i = -1; i<2; i++){
-		printf("%d ", a[i]);
-	}
-
-	printf("\n");
-
-
-	return 0;
+	printf("\n===============\n");
 }
