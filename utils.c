@@ -12,7 +12,7 @@ int sq120to64(int sq120){
 
 // returns sq64 of index, but starting at the 8th rank
 // used for printing board and generating FEN
-int boardIndexFlip(int i){
+int invertRows(int i){
 	return 56 + i - 2 * (i - i % 8);
 }
 

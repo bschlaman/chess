@@ -102,7 +102,7 @@ int genFEN(BOARD_STATE *bs, char *fen){
 	int *board = bs -> board;
 	// pieces
 	for(i = 0, f = 0, num = 0 ; i < 64 ; i++){
-		piece = board[sq64to120(boardIndexFlip(i))];
+		piece = board[sq64to120(invertRows(i))];
 		p = pieceChar[piece];
 		ASSERT(piece >= EMPTY && piece <= bK);
 		if(piece == EMPTY){

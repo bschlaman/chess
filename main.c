@@ -602,7 +602,7 @@ void printBoard(BOARD_STATE *bs, int option){
 	if(option == OPT_120_BOARD){
 		printf(YEL " ---- 120 Board ---- \n" reset);
 		for(i = 0 ; i < 120 ; i++){
-			// same horizontal board flip logic as in boardIndexFlip()
+			// same horizontal board flip logic as in invertRows()
 			index120 = 110 + i - 2 * (i - i % 10);
 			printf("%2d ", bs -> board[index120]);
 			if((i + 1) % 10 == 0){

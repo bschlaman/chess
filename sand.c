@@ -134,17 +134,21 @@ int sq120to64(int sq120){
 	return sq120 - 17 - 2 * (sq120 - sq120 % 10) / 10;;
 }
 
-int boardIndexFlip(int i){
-	return 176 + i - 2 * (i - i % 16);
+int invertRows(int i){
+	return 0xB0 + i - 2 * (i - i % 16);
 }
 
 int main(){
 	unsigned char b[0xBC];
-	for(int i = 0; i<(12*16); i++) b[i] = (i-0x22)&0x88 ? 0 : 1;
-	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? 0 : 1;
+	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? '0' : 'X';
 	for(int i = 0; i<0xBC; i++){
 		if(i%16 == 0) printf("\n");
-		printf("%d ", b[boardIndexFlip(i)]);
+		//printf("%d ", b[invertRows(i)]);
+		printf("%c ", (invertRows(i)-0x22)&0x88 ? '0' : 'X');
+	}
+	printf("\n===============\n");
+	for(int i = 0; i<0xBC; i++){
+		printf("%c ", b[i]);
 	}
 	printf("\n===============\n");
 }

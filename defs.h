@@ -129,7 +129,7 @@ extern int genFEN(BOARD_STATE *bs, char *fen);
 // utils.c
 extern int sq64to120(int sq64);
 extern int sq120to64(int sq120);
-extern int boardIndexFlip(int i);
+extern int invertRows(int i);
 extern int frToSq64(int file, int rank);
 extern void getAlgebraic(char *sqfr, int sq120);
 extern void getCastlePermissions(char *sqStrPtr, int cperm);
