@@ -135,20 +135,22 @@ int sq120to64(int sq120){
 }
 
 int invertRows(int i){
-	return 0xB0 + i - 2 * (i - i % 16);
+	return 0xB0 + i - 2 * (i - i % 0x10);
 }
 
 int main(){
 	unsigned char b[0xBC];
-	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? '0' : 'X';
-	for(int i = 0; i<0xBC; i++){
-		if(i%16 == 0) printf("\n");
-		//printf("%d ", b[invertRows(i)]);
-		printf("%c ", (invertRows(i)-0x22)&0x88 ? '0' : 'X');
+	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? '-' : 'X';
+	for(int i = 0; i<0xBC + 4; i++){
+		if(i%0x10 == 0) printf("\n");
+		printf("%c ", (invertRows(i)-0x22)&0x88 ? '-' : 'X');
 	}
 	printf("\n===============\n");
 	for(int i = 0; i<0xBC; i++){
 		printf("%c ", b[i]);
 	}
 	printf("\n===============\n");
+	for(int i = 0; i<0xBC; i++){
+		printf("%d ", invertRows(i));
+	}
 }
