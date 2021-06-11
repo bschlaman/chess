@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>	
+#include <time.h>
 #include "defs.h"
 #include "colors.h"
 
@@ -761,8 +762,11 @@ int main(int argc, char *argv[]){
 		printBoard(bs, OPT_64_BOARD);
 		printBoard(bs, OPT_BOARD_STATE);
 
-		int tot = (int)perft2(bs, 6);
+		clock_t t = clock();
+		int tot = (int)perft2(bs, 5);
+		t = clock() - t;
 		printf(RED "total: " reset "%i\n", tot);
+		printf(RED "time:  " reset "%4.4f\n", t * (1./CLOCKS_PER_SEC));
 	}
 
 	// SEARCH_MODE - output first layer of search

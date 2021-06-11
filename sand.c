@@ -139,18 +139,20 @@ int invertRows(int i){
 }
 
 int main(){
+	initRand();
+	// make and print board
 	unsigned char b[0xBC];
 	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? '-' : 'X';
 	for(int i = 0; i<0xBC + 4; i++){
 		if(i%0x10 == 0) printf("\n");
 		printf("%c ", (invertRows(i)-0x22)&0x88 ? '-' : 'X');
 	}
-	printf("\n===============\n");
-	for(int i = 0; i<0xBC; i++){
-		printf("%c ", b[i]);
-	}
-	printf("\n===============\n");
-	for(int i = 0; i<0xBC; i++){
-		printf("%d ", invertRows(i));
-	}
+	printf("\n================\n");
+	// testing out how to time stuff
+	printf("Clock ticks: %d\n", clock());
+	for(int i ; i < 100000000 ; i++){ randInt(34, 23432432); }
+	printf("Clock ticks: %d\n", clock());
+	printf("CLOCKS_PER_SEC: %d\n", CLOCKS_PER_SEC);
+	printf("1over: %f\n", (1./CLOCKS_PER_SEC));
+	printf("CPU seconds: %f\n", clock() * (1./CLOCKS_PER_SEC));
 }

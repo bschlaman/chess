@@ -2,7 +2,7 @@
  * improve the performance of my perft
  * explore other board representations
 
-My engine currently uses a 10x12 representation, which is the smallest setup that uses piece offsets with OFFBOARD checks
+My engine currently uses a 10x12 representation, which is the smallest setup that uses piece offsets with OFFBOARD checks.
 
 ## Disecting qperft.c
 The memory location for the board seems to be the board itself plus capture codes and a delta vector (whatever that is).
@@ -23,7 +23,7 @@ There is also an offset of 0x22 here, which indicates that there are two rows of
 int invertRows(int i){
 	return 0xB0 + i - 2 * (i - i % 0x10);
 }
-for(int i = 0; i<0xBC + 4; i++){
+for(int i = 0; i < 0xBC + 4; i++){
 	if(i%0x10 == 0) printf("\n");
 	printf("%c ", (invertRows(i)-0x22)&0x88 ? '-' : 'X');
 }
@@ -46,3 +46,8 @@ Output:
 
 The problem with printing out a board with A1 in the lower left corner is that the for loop will print starting at the top.  I therefore introduce the `invertRows` function that assumes a 12x16 board layout and converts an index to its corresponding index mirrored across the y axis.
 At this point, I'm still unsure what purpose the extra 0x77 of allocated space for the board will be used for.  Perhaps a color indicator?
+For the moment, I'll take a break from the board representation and look into how qperft handles time.  I had previously been using the `time` unix utility when executing my binary, which works well enough, but I need an internal mechanism so that I can output times at each perft depth. My first clue is the inclusion of the `time.h` headder file.  During the perft routine, the time is printed out at each depth:
+```c
+printf("perft(%2d)= %s (%6.3f sec)\n", i, buf, t*(1./CLOCKS_PER_SEC));
+```
+This is done by capturing an initial time `t = clock()` just before recursing on `perft()`.
