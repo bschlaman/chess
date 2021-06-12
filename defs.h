@@ -138,6 +138,7 @@ extern bool getColor(int piece);
 extern bool on2ndRank(int sq, bool color);
 extern bool on7thRank(int sq, bool color);
 extern bool enPasCorrectColor(int enPas, bool stm);
+extern void printBits(size_t const size, void const * const ptr);
 // main.c
 extern void resetBoard(BOARD_STATE *bs);
 extern int genLegalMoves(BOARD_STATE *bs, MOVE moves[]);

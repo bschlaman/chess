@@ -4,32 +4,9 @@
 #include <unistd.h>
 #include <ctype.h>	
 #include <time.h>
+#include <limits.h>
 #include "colors.h"
 #include "defs.h"
-
-int parseArgs(char *inputFEN, int argc, char *argv[]){
-	int c;
-	while((c = getopt(argc, argv, "f:")) != -1){
-		switch(c){
-			case 'f':
-				strcpy(inputFEN, optarg);
-				return FEN_MODE;
-				break;
-			case '?':
-				if (optopt == 'f')
-					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-				else if (isprint(optopt))
-					fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-				else
-					fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-				return -1;
-			default:
-				fprintf(stderr, "Error with arg parsing", optopt);
-				exit(1);
-		}
-	}
-	return NORMAL_MODE;
-}
 
 void initRand(){
 	time_t t;
@@ -97,37 +74,16 @@ BOARD* init(){
 	return b;
 }
 
-int testEval(){
-	return randInt(-5, 5);
-}
-
-int genLeg(int moves[][4]){
-	for(int i = 0 ; i < 10 ; i++){
-		moves[i][2] = -1;
+void printBits(size_t const size, void const * const ptr){
+	// casting to uchar so we can iterate by "sizes" (bytes)
+	// b[0], b[1], ... are all of size uchar
+	unsigned char *b = (unsigned char*) ptr;
+	for(int byte = size - 1; byte >= 0; byte--){
+		for(int bit = 7; bit >= 0; bit--){
+			printf("%u", (b[byte] >> bit) & 1);
+		}
 	}
-}
-
-int getPinDir(int kingsq, int pinsq){
-	int diff = pinsq - kingsq;
-	if(diff > 0){
-		if(diff % 11 == 0) return 11;
-		if(diff % 10 == 0) return 10;
-		if(diff % 9 == 0) return 9;
-		if(diff % 1 == 0) return 1;
-	} else {
-		if(diff % 11 == 0) return -11;
-		if(diff % 10 == 0) return -10;
-		if(diff % 9 == 0) return -9;
-		if(diff % 1 == 0) return -1;
-	}
-	return 0;
-}
-
-void printPinned(U64 pinned){
-	for(int i = 0 ; i < 64 ; i++){
-		printf("%d ", !!(1ULL << i & pinned));
-		if((i + 1) % 8 == 0) printf("\n");
-	}
+	puts("");
 }
 
 int sq120to64(int sq120){
@@ -137,6 +93,18 @@ int sq120to64(int sq120){
 int invertRows(int i){
 	return 0xB0 + i - 2 * (i - i % 0x10);
 }
+
+#define capt_code  (board+0xBC+0x77)      /* piece type that can reach this*/
+#define delta_vec  ((char *) board+0xBC+0xEF+0x77) /* step to bridge certain vector */
+/* capture codes */
+#define C_ORTH    1
+#define C_DIAG    2
+#define C_KNIGHT  4
+#define C_SIDE    8
+#define C_FORW    0x10
+#define C_FDIAG   0x20
+#define C_BACKW   0x40
+#define C_BDIAG   0x80
 
 int main(){
 	initRand();
@@ -148,11 +116,33 @@ int main(){
 		printf("%c ", (invertRows(i)-0x22)&0x88 ? '-' : 'X');
 	}
 	printf("\n================\n");
-	// testing out how to time stuff
-	printf("Clock ticks: %d\n", clock());
-	for(int i ; i < 100000000 ; i++){ randInt(34, 23432432); }
-	printf("Clock ticks: %d\n", clock());
-	printf("CLOCKS_PER_SEC: %d\n", CLOCKS_PER_SEC);
-	printf("1over: %f\n", (1./CLOCKS_PER_SEC));
-	printf("CPU seconds: %f\n", clock() * (1./CLOCKS_PER_SEC));
+
+	// =========================
+	// improving move generation
+	// =========================
+	// set up the board
+	unsigned char board[0xBC];
+	for(int i = 0; i<0xBC; i++) board[i] = (i-0x22)&0x88 ? '-' : 'X';
+	// constants for this 16x12 board
+	char
+		queen_dir[]   = {1, -1, 16, -16, 15, -15, 17, -17},
+		king_rose[]   = {1,17,16,15,-1,-17,-16,-15},
+		knight_rose[] = {18,33,31,14,-18,-33,-31,-14};
+	// start the clock
+	clock_t t = clock();
+	/* contact captures (cannot be blocked) */
+	capt_code[ 15] = capt_code[ 17] = C_FDIAG;
+	capt_code[-15] = capt_code[-17] = C_BDIAG;
+	capt_code[  1] = capt_code[ -1] = C_SIDE;
+	capt_code[ 16] = C_FORW;
+	capt_code[-16] = C_BACKW;
+	for(int i = 0 ; i < 8 ; i++){
+		capt_code[knight_rose[i]] = C_KNIGHT;
+		delta_vec[knight_rose[i]] = knight_rose[i];
+	}
+	printf("size of size_t: %d\n", sizeof(unsigned char));
+	unsigned int test = UINT_MAX;
+	printf("&test: %p\n", &test);
+	print_bits(sizeof(test), &test);
+	printf("&UINT_MAX: %u\n", UINT_MAX);
 }

@@ -67,3 +67,18 @@ bool on7thRank(int sq, bool color){
 bool enPasCorrectColor(int enPas, bool stm){
 	return enPas - 70 + 30 * stm >= 1 && enPas - 70 + 30 * stm <= 8;
 }
+
+// usage:
+// unsigned long a = _;
+// printBits(sizeof(a), &a);
+void printBits(size_t const size, void const * const ptr){
+	// casting to uchar so we can iterate by "sizes" (bytes)
+	// b[0], b[1], ... are all of size uchar
+	unsigned char *b = (unsigned char*) ptr;
+	for(int byte = size - 1; byte >= 0; byte--){
+		for(int bit = 7; bit >= 0; bit--){
+			printf("%u", (b[byte] >> bit) & 1);
+		}
+	}
+	puts("");
+}

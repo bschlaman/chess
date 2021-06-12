@@ -51,3 +51,9 @@ For the moment, I'll take a break from the board representation and look into ho
 printf("perft(%2d)= %s (%6.3f sec)\n", i, buf, t*(1./CLOCKS_PER_SEC));
 ```
 This is done by capturing an initial time `t = clock()` just before recursing on `perft()`.
+I havent yet gotten my head around the extra 0x77; my best guess currently is that it's some type of 0x88 mask, using each nibble 0-7 to indicate a rank and file.  For now, I turn my attention to move generation.  There are 3 areas I need to explore:
+1. Method for storing and saving moves
+1. Move generation
+1. Make / Unmake
+`Current perft(6) ~ 40seconds`
+I figured out where the 0x77 comes from!  it's simply H8 - A1!  The purpose is so that one can index by capture vector!  The lowest index will be -0x77, representing a move from H8 to A1, and the highest index will be 0x77, a move from A1 to H8.
