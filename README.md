@@ -46,14 +46,11 @@ Output:
 
 The problem with printing out a board with A1 in the lower left corner is that the for loop will print starting at the top.  I therefore introduce the `invertRows` function that assumes a 12x16 board layout and converts an index to its corresponding index mirrored across the y axis.
 At this point, I'm still unsure what purpose the extra 0x77 of allocated space for the board will be used for.  Perhaps a color indicator?
-For the moment, I'll take a break from the board representation and look into how qperft handles time.  I had previously been using the `time` unix utility when executing my binary, which works well enough, but I need an internal mechanism so that I can output times at each perft depth. My first clue is the inclusion of the `time.h` headder file.  During the perft routine, the time is printed out at each depth:
-```c
-printf("perft(%2d)= %s (%6.3f sec)\n", i, buf, t*(1./CLOCKS_PER_SEC));
-```
-This is done by capturing an initial time `t = clock()` just before recursing on `perft()`.
-I havent yet gotten my head around the extra 0x77; my best guess currently is that it's some type of 0x88 mask, using each nibble 0-7 to indicate a rank and file.  For now, I turn my attention to move generation.  There are 3 areas I need to explore:
+I figured out where the 0x77 comes from!  it's simply H8 - A1!  The purpose is so that one can index by capture vector!  The lowest index will be -0x77, representing a move from H8 to A1, and the highest index will be 0x77, a move from A1 to H8.
+Now, I turn my attention to move generation.  There are 3 areas I need to explore:
 1. Method for storing and saving moves
 1. Move generation
 1. Make / Unmake
-`Current perft(6) ~ 40seconds`
-I figured out where the 0x77 comes from!  it's simply H8 - A1!  The purpose is so that one can index by capture vector!  The lowest index will be -0x77, representing a move from H8 to A1, and the highest index will be 0x77, a move from A1 to H8.
+_Note: Current perft(6) ~ 40 sec_
+
+

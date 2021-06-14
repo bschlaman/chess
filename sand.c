@@ -141,8 +141,7 @@ int main(){
 		delta_vec[knight_rose[i]] = knight_rose[i];
 	}
 	printf("size of size_t: %d\n", sizeof(unsigned char));
-	unsigned int test = UINT_MAX;
-	printf("&test: %p\n", &test);
-	print_bits(sizeof(test), &test);
-	printf("&UINT_MAX: %u\n", UINT_MAX);
+	for(int i = -0x77; i <= 0x77; i++){
+		printf("%d ", capt_code[i]);
+	}
 }
