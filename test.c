@@ -50,9 +50,10 @@ bool testMoveGenPositions(){
 	for(int i = 0 ; i < tpsSize() ; i++){
 		resetBoard(tbs);
 		parseFEN(tbs, tps[i].fen);
-		printf("depth: %d, pos: %s\n", tps[i].depth, tps[i].fen);
+		printf("pos: %2d, depth: %3d ", i, tps[i].depth, i);
 		total = perft2(tbs, tps[i].depth);
-		printf("wanted: %d, got: %d\n", tps[i].nodes, total);
+		printf("wanted: %8d, got: %8d ", tps[i].nodes, total);
+		printf("%s\n" reset, total == tps[i].nodes ? GRN "✓" : RED "X");
 		ASSERT(total == tps[i].nodes);
 	}
 	return true;

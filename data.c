@@ -65,6 +65,12 @@ TEST_POSITION tps[] = {
 		.depth = 2,
 		.nodes = 1486,
 	},
+	// KiwiPete position (pos 2 from wiki)
+	{
+		.fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+		.depth = 4,
+		.nodes = 4085603,
+	},
 	{
 		.fen = "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK -",
 		.depth = 1,
