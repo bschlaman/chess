@@ -50,7 +50,19 @@ Output:
 ```
 
 The problem with printing out a board with A1 in the lower left corner is that the for loop will print starting at the top.  I therefore introduce the `invertRow` function that assumes a 12x16 board layout and converts an index to its corresponding index mirrored across the x axis.  Notice also that I've added a `+4` in my iteration as compared to qperft.c; this is simply to avoid 4 missing guard characters (`-`) in the output that would end up in the wrong place anyways due to `invertRow`.  The extra guard charaters on the right side of the board are simply there to allow for the conveniences granted by 0x88 board representations.  Perhaps an idea I'll steal for my own representation!  One open question remains, however: why double guard bands on both sides of the board?  The single left and right guard bands in the 10x12 representation should suffice.
+#### Capture Codes
 The next 2 lots of 0x77 granted to the board memory addresses are simply H8 - A1.  The purpose is so that one can index by capture vector; that is, each unique capture from sq1 -> sq2 can be uniquely represented by the `capt_code` list (order is preserved, so negative indices are allowed here).  The lowest index will be -0x77, representing a move from H8 to A1, and the highest index will be 0x77, a move from A1 to H8.  Beautiful!
+To understand the `capt_code` array, I think it's helpful to think of it as completely separate from `board`.  The board array ends at 0xBB, with 0xBC being the first address of `capt_code`.  But this address is assigned with a 0x77 offset; that is, the first address is accessed like `capt_code[-0x77]`.  `capt_code` takes a sq to sq capture as its index and returns capture codes, which can be used to identify what kinds of pieces can make that capture.  Contact captures are treated differently than sliding captures; the reason for this will likely become clear later.
+When `capt_code` is initialized; only the "atomic" or "base" captures are used:
+- `C_ORTH`
+- `C_DIAG`
+- `C_KNIGHT`
+- `C_SIDE`
+- `C_FORW`
+- `C_FDIAG`
+- `C_BACKW`
+- `C_BDIAG`
+"Higher order" capture codes like [ferz](https://en.wikipedia.org/wiki/Ferz) are synthesized from these foundational ones; e.g. `#define C_FERZ    (C_FDIAG|C_BDIAG)`.
 #### Piece Representation
 There is a pc array of size 4 * 32
 #### Move Generation
