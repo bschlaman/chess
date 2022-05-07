@@ -672,16 +672,12 @@ int parseArgs(char *inputFEN, int argc, char *argv[]){
 			case 'f':
 				strcpy(inputFEN, optarg);
 				return FEN_MODE;
-				break;
 			case 't':
 				return TEST_MODE;
-				break;
 			case 'p':
 				return PERFT_MODE;
-				break;
 			case 's':
 				return SEARCH_MODE;
-				break;
 			case '?':
 				if(optopt == 'f')
 					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
