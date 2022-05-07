@@ -54,14 +54,14 @@ The problem with printing out a board with A1 in the lower left corner is that t
 The next 2 lots of 0x77 granted to the board memory addresses are simply H8 - A1.  The purpose is so that one can index by capture vector; that is, each capture from sq1 -> sq2 can be uniquely represented as an index of `capt_code` (order is preserved, so negative indices are required, and the array address space is 15^2).  The lowest index is -0x77, representing a move from H8 to A1, and the highest index is 0x77, a move from A1 to H8.  Beautiful!
 To understand the `capt_code` array, I think it's helpful to think of it as completely separate from `board`.  The `board` array ends at 0xBB, with 0xBC (in `board` terms) being the first address of `capt_code`.  But this address is assigned with a 0x77 offset; that is, the first element is accessed like `capt_code[-0x77]`.  `capt_code` takes a sq to sq capture as its index and returns capture codes, which can be used to identify what kinds of pieces can make that capture.  Contact captures are flagged separately from sliding captures; the reason for this will likely become clear later.
 When `capt_code` is initialized; only the "elemental" captures are used:
-- `C_ORTH`
-- `C_DIAG`
-- `C_KNIGHT`
-- `C_SIDE`
-- `C_FORW`
-- `C_FDIAG`
-- `C_BACKW`
-- `C_BDIAG`
+- C\_ORTH
+- C\_DIAG
+- C\_KNIGHT
+- C\_SIDE
+- C\_FORW
+- C\_FDIAG
+- C\_BACKW
+- C\_BDIAG
 "Higher order" capture codes like [ferz](https://en.wikipedia.org/wiki/Ferz) are synthesized from these foundational ones; e.g. `#define C_FERZ    (C_FDIAG|C_BDIAG)`.
 #### Piece Representation
 There is a pc array of size 4 * 32
@@ -77,15 +77,21 @@ Perft mode is run by calling my engine with the `-p` flag.  When invoked, the fo
 1. A timer is started using clock\_t clock from time.h
 1. perft2 is run.  This function currently resides in eval.c and uses the [chess programming wiki implementation](https://www.chessprogramming.org/Perft)
 > I'ts important to understand the difference between perft and perft2: perft2 avoids the last make/unmake call by returning the number of legal moves at depth 1.  I am not yet sure which of these qperft uses, but for my own pride I hope it's using perft2!
-  1. Call genLegalMoves
-  1. Call makeMove
-  1. Recurse
-  1. Call undoMove
+Inside perft2:
+1. Call `genLegalMoves`
+1. Call `makeMove`
+1. Recurse
+1. Call `undoMove`
 > In perft2, all three functions are called equally often (gen is called 1 more time than make/undo; think of the first call to gen as the extra one).  In perft, makeMove and undoMove are called more often than genLegalMoves.  This is good because improvements are needed in all 3 functions, and these improvements will be weighted equally in perft2.
-
 At depth 4, the functions are called 9322 (and 9323) times.
+genLegalMoves:
+1. Check if we are in check
+1. If no, loop over the entire board and generate moves for each piece of the side-to-move color
+1. If yes, move the king, capture the checking piece, or block the check
+
 #### General improvement ideas
 - Avoid accessing memory like `bs -> board`; this is expensive due to potential cache misses
+- Avoid branching
 #### genLegalMoves improvements
 #### makeMove improvements
 #### undoMove improvements
