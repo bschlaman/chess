@@ -761,7 +761,7 @@ int main(int argc, char *argv[]){
 		clock_t t = clock();
 		int tot = (int)perft2(bs, 6);
 		t = clock() - t;
-		printf(RED "total: " reset "%i\n", tot);
+		printf(RED "nodes: " reset "%i\n", tot);
 		printf(RED "time:  " reset "%4.4f\n", t * (1./CLOCKS_PER_SEC));
 	}
 

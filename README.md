@@ -97,10 +97,10 @@ genLegalMoves:
 #### undoMove improvements
 
 ### Performance results
-As of 04.05.2022, my peft is about 6.3x slower than qperft.c
-On my i7 1.8GHz CPU:
-bperft (depth 6): 14.5s
-qperft (depth 6):  2.3s
+As of 08.05.2022, my peft is about 5.2x slower than qperft.c
+On my i7 1.8GHz CPU, plugged into power (average of 10 runs):
+- bperft (starting position, depth 6): 8.93s
+- qperft (starting position, depth 6): 1.72s
 TODO: run compare to results on rpi
 
 ### Thoughts as I work
@@ -110,3 +110,7 @@ TODO: run compare to results on rpi
 - Doesn't seem like first 32 elements of `kind` have been initialized before looping over them on line 178...
 - Something worth testing is using separate arrays for pieces, positions, etc. instead of a contiguous chunk of memory impacts performance
 - Unused `kind` elements are probably for promotions.  Not sure why the king and two knights are on the left side of these open slots
+
+### Daily Notes
+#### 08.05.2022
+I need a standard way of measuring improvements to my engine.  Each improvement should be followed by a series of perft runs (so results can be averaged), and the improvement should be well documented.  I think I should clean up PERFT\_MODE to only output the timing and create a simple script to measure the results.
