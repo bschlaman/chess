@@ -108,9 +108,21 @@ TODO: run compare to results on rpi
 - Is there a reason OFFBOARD needs to be -1 in my case, or can it just be a regular enum?
 - LastKnight, FirstSlider, etc are probably optimizations for board scanning
 - Doesn't seem like first 32 elements of `kind` have been initialized before looping over them on line 178...
-- Something worth testing is using separate arrays for pieces, positions, etc. instead of a contiguous chunk of memory impacts performance
 - Unused `kind` elements are probably for promotions.  Not sure why the king and two knights are on the left side of these open slots
+- One major difference between qperft and my engine is that qperft uses global arrays for the board and pieces, whereas I use a struct whose pointer I pass around.  Any issues with that?
+- `FirstSlider` is not the first slider on the board, but rather the first slider in the kind / pos / code arrays
 
 ### Daily Notes
 #### 08.05.2022
 I need a standard way of measuring improvements to my engine.  Each improvement should be followed by a series of perft runs (so results can be averaged), and the improvement should be well documented.  I think I should clean up PERFT\_MODE to only output the timing and create a simple script to measure the results.
+<br>
+Today I tested the performance difference of using a completely different array for `capt_code` by replacing
+```c
+#define capt_code  (brd+1+0xBC+0x77)
+```
+with
+```c
+#define capt_code (cc+0x77)
+unsigned char cc[0xEF];
+```
+Neither perft(6) nor perft(7) showed a statistically significant difference between the two.
