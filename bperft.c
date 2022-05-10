@@ -33,14 +33,14 @@
 #define pos  (pc+1+NUM_PIECES*2)
 #define code (pc+1+NUM_PIECES*3)
 
-#define WHITE  0x20 // 32. why not start at 0?
-#define BLACK  0x40 // 64
+#define WHITE  0x20     // 32    0b 0010 0000
+#define BLACK  0x40     // 64    0b 0100 0000
+#define COLOR  (BLACK|WHITE)  // 0b 0110 0000
+#define GUARD  (COLOR|0x80)   // 0b 1110 0000
+#define DUMMY  (WHITE-1+0x80) // 0b 1001 1111
+#define PAWNS  0x10           // 0b 0001 0000
 // NumberOfPieces? = 64
 #define NUM_PIECES    (2*WHITE)
-#define COLOR  (BLACK|WHITE)
-#define GUARD  (COLOR|0x80)
-#define DUMMY  (WHITE-1+0x80)
-#define PAWNS  0x10
 
 // enum { WHITE, BLACK, NEITHER };
 // does offboard need to be -1?
@@ -83,13 +83,13 @@ void printBoard(unsigned char *b){
 	puts("");
 }
 
-void board_init(unsigned char *b){
+void board_init(char *b){
 	for(int i = -1; i < 0xBC; i++)
 		b[i] = (i-0x22)&0x88 ? GUARD : DUMMY;
 }
 
 void piece_init(){
-	for(int i=0; i<8; i++){
+	for(int i = 0; i < 8; i++){
 		kind[array[i]+WHITE] = kind[array[i]] = array[i+8];
 		kind[i+PAWNS]       = WPAWN;
 		kind[i+PAWNS+WHITE] = BPAWN;
@@ -106,8 +106,9 @@ void piece_init(){
 
 void setup(){   /* put pieces on the board according to the piece list */
 	// WHITE-8 = 24 since he is using those unused pawn sections for other data (code - x)
-	for(int i=0; i<WHITE-8; i++){
-		// WHITE + i _are the piece types_
+	for(int i = 0; i < WHITE - 8; i++){
+		// i is the index of kind
+		// when kind is used, WHITE will be subtracted
 		if(pos[i]      ) board[pos[i]]       = WHITE + i;
 		if(pos[i+WHITE]) board[pos[i+WHITE]] = BLACK + i;
 	}
@@ -119,14 +120,27 @@ void pboard(char *b, int n, int bin)
 {   /* print board of n x n, in hex (bin=1) or ascii */
     int i, j, k;
 
+		// i is row; j is column (weird)
+		// also why have n be variable here?
     for(i=n-1; i>=0; i--)
     {
         for(j=0; j<n; j++)
+						// &0xFF chops off anything outside a byte
+						// this is unnecessary since it was declared as uchar
             if(bin) printf(" %2x", b[16*i+j]&0xFF);
-            else    printf(" %c", (b[16*i+j]&0xFF)==GUARD ? '-' :
-										// seems like no point in &0x7f
-                    asc[kind[(b[16*i+j]&0x7F) - WHITE]
-											+ ((b[16*i+j] & WHITE)>>1)]);
+            else    printf(" %c", (b[16*i+j]&0xFF) == GUARD ? '-' :
+							// seems like no point in &0x7f
+							// middle squares will be DUMMY
+							// DUMMY: 0b 1001 1111
+							// DUMMY & WHITE = 0
+							// sometimes the kind index will be -1 in case of DUMMY... what?
+							// luckily kind[-1] = pc[0] = 0... assuming thats now pc was initialized...
+                    asc[
+											kind[ (b[16*i+j]&0x7F) - WHITE ]
+											// outer parens needed for order of ops i guess
+											+ ( (b[16*i+j] & WHITE)>>1 )
+										]);
+
         printf("\n");
     }
     printf("\n");
@@ -134,6 +148,7 @@ void pboard(char *b, int n, int bin)
 
 int main(){
 	board_init(board);
+	piece_init();
 	setup();
 	pboard(board, 12, 0);
 }

@@ -126,3 +126,9 @@ with
 unsigned char cc[0xEF];
 ```
 Neither perft(6) nor perft(7) showed a statistically significant difference between the two.
+#### 09.05.2022
+Today's goal is simple: figure out why `pboard` isn't working!
+Seems like the values of board are piece values with one of the color bits (`WHITE` or `BLACK`) set.
+If I make my board a char board, it should not be unsigned if I plan for OFFBOARD to be -1.
+Got it... forgot to call piece\_init...
+Next mystery: why in asc are the pawns offset by different values than all the other pieces

@@ -144,4 +144,9 @@ int main(){
 	for(int i = -0x77; i <= 0x77; i++){
 		printf("%d ", capt_code[i]);
 	}
+	puts("");
+	printf("size of char: %d\n", sizeof(char));
+	printf("size of uchar: %d\n", sizeof(unsigned char));
+	char a = -3;
+	printf("a: %u\n", (unsigned char)a);
 }
