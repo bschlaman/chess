@@ -64,7 +64,15 @@ When `capt_code` is initialized; only the "elemental" captures are used:
 - C\_BDIAG
 "Higher order" capture codes like [ferz](https://en.wikipedia.org/wiki/Ferz) are synthesized from these foundational ones; e.g. `#define C_FERZ    (C_FDIAG|C_BDIAG)`.
 #### Piece Representation
-There is a pc array of size 4 * 64
+There is a pc array of size 4 * 64 (room for kind, cstl, pos, code)
+<br>
+Some common patterns:
+- board values are (0..63) + WHITE
+- board[(0x22..0x99)] - WHITE can be used as kind index to get piece type (2 types of pawns, 1 of everything else)
+- board[(0x22..0x99)]&WHITE think of as (board[(0x22..0x99)]-WHITE+WHITE)&WHITE is WHITE for (32 .63) but 0 for (0..31)
+- (0..63) -> pos -> board -> kind -> (1, 2, ... 7)
+- color - WHITE maps WHITE:BLACK -> 0:32, useful for indexing pos
+- COLOR - color maps WHITE:BLACK -> BLACK:WHITE
 #### Move Generation
 I will explore the qperft strategy for the following 3 move generation activities:
 1. Move serialization
@@ -103,7 +111,7 @@ On my i7 1.8GHz CPU, plugged into power (average of 10 runs):
 - qperft (starting position, depth 6): 1.72s
 TODO: run compare to results on rpi
 
-### Thoughts as I work
+### Thoughts as I work and open questions
 - I have a theory that qperft uses a contiguous segment of memory to store all game data to improve hash performance
 - Is there a reason OFFBOARD needs to be -1 in my case, or can it just be a regular enum?
 - LastKnight, FirstSlider, etc are probably optimizations for board scanning
@@ -111,6 +119,7 @@ TODO: run compare to results on rpi
 - Unused `kind` elements are probably for promotions.  Not sure why the king and two knights are on the left side of these open slots
 - One major difference between qperft and my engine is that qperft uses global arrays for the board and pieces, whereas I use a struct whose pointer I pass around.  Any issues with that?
 - `FirstSlider` is not the first slider on the board, but rather the first slider in the kind / pos / code arrays
+- Why offset board values by WHITE?  It would be just as easy to store the (0..63) values, and a color check would be as easy as &32
 
 ### Daily Notes
 #### 08.05.2022

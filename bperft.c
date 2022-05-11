@@ -71,6 +71,15 @@ char
 	king_rose[]    = {1,17,16,15,-1,-17,-16,-15},
 	knight_rose[]  = {18,33,31,14,-18,-33,-31,-14};
 
+#define PUSH(A,B) stack[msp++] = (A)+(B);
+// MoveStack i presume?
+int stack[1024],
+	// MoveStackPointer
+	msp,
+	ep1, ep2,
+	Promo,
+	epSqr;
+
 
 void printBoard(unsigned char *b){
 	int invertRow(int i){
@@ -149,6 +158,29 @@ void pboard(char *b, int n, int bin)
         printf("\n");
     }
     printf("\n");
+}
+
+void move_gen(int color, int lastply, int d){
+	// color = WHITE or BLACK
+	int k, p, forward;
+	int first_move = msp;
+
+	k = pos[color-WHITE];   /* position of my King */
+	// 16, -16
+	forward = 48 - color;            /* forward step */
+	rank = 0x58 - (forward>>1);     /* 4th/5th rank */
+	prank = 0xD0 - 5*(color>>1);    /* 2nd/7th rank */
+	// lastply stores ep square and checks
+	ep_flag = lastply>>24&0xFF;
+	// msp = MoveStackPointer??
+	ep1 = ep2 = msp; Promo = 0;
+
+	// starts with pintest
+	for(p=FirstSlider[COLOR-color]; p<COLOR-WHITE+16-color; p++){
+		j = pos[p]; /* enemy slider */
+		if(j==0) continue;  /* currently captured */
+	}
+
 }
 
 int main(){
