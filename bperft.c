@@ -136,8 +136,13 @@ void pboard(char *b, int n, int bin)
 							// sometimes the kind index will be -1 in case of DUMMY... what?
 							// luckily kind[-1] = pc[0] = 0... assuming thats now pc was initialized...
                     asc[
+											// subtracting WHITE gives (0-31) for white pcs
+											// and (32-63) for black pieces
 											kind[ (b[16*i+j]&0x7F) - WHITE ]
 											// outer parens needed for order of ops i guess
+											// b[x] & WHITE is 0x00 for black pieces
+											// b[x] & WHITE is 0x20 for white pieces
+											// (b[x] & WHITE)>>1 = 0x10 for white
 											+ ( (b[16*i+j] & WHITE)>>1 )
 										]);
 
@@ -150,5 +155,5 @@ int main(){
 	board_init(board);
 	piece_init();
 	setup();
-	pboard(board, 12, 0);
+	pboard(board, 12, 1);
 }

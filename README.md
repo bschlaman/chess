@@ -64,7 +64,7 @@ When `capt_code` is initialized; only the "elemental" captures are used:
 - C\_BDIAG
 "Higher order" capture codes like [ferz](https://en.wikipedia.org/wiki/Ferz) are synthesized from these foundational ones; e.g. `#define C_FERZ    (C_FDIAG|C_BDIAG)`.
 #### Piece Representation
-There is a pc array of size 4 * 32
+There is a pc array of size 4 * 64
 #### Move Generation
 I will explore the qperft strategy for the following 3 move generation activities:
 1. Move serialization
@@ -127,8 +127,26 @@ unsigned char cc[0xEF];
 ```
 Neither perft(6) nor perft(7) showed a statistically significant difference between the two.
 #### 09.05.2022
-Today's goal is simple: figure out why `pboard` isn't working!
-Seems like the values of board are piece values with one of the color bits (`WHITE` or `BLACK`) set.
+Today's goal is simple: figure out why `pboard` isn't working!  Seems like the values of board are piece values with one of the color bits (`WHITE` or `BLACK`) set.
 If I make my board a char board, it should not be unsigned if I plan for OFFBOARD to be -1.
 Got it... forgot to call piece\_init...
+<br>
 Next mystery: why in asc are the pawns offset by different values than all the other pieces
+#### 10.05.2022
+The actual values of board are piece value (0..63) + WHITE, but with the important caveat that the black pieces are already offset by WHITE such that ((32..63) + WHITE) & WHITE = 0.  Also, having a nested for loop to print the board to invert the rows is a much simpler way of printing a board top to bottom than my `invertRow` function.
+<br>
+To find out the mystery from yesterday, let's take an example
+- black knight on B8 (0x93)
+- board[0x93] = 0x41 (can think of it as 0x21 + WHITE)
+- kind[0x41 - WHITE] = kind[0x21] = KING = 7
+- board[0x93]&WHITE = 0
+Everything checks out; asc[7] = 'k'
+<br>
+Now let's look at white pawns
+- white pawn on D4 (0x35)
+- board[0x35] = 0x33 (can think of it as 0x13 + WHITE)
+- kind[0x33 - WHITE] = kind[0x21] = WPAWN = 1
+- board[0x35]&WHITE = 32; 32>>1 = 16
+asc[17] = 'P'.  Makes sense!  For every other piece kind, kind[(0..15)] + WHITE = kind[(32..47)].  But WPAWN != BPAWN.  This seems like an unnecessary complication introduced by this +- WHITE game.  This piece representation must offer some serious performance gains...
+<br>
+I think I can finally turn my attention to move generation!
