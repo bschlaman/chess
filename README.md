@@ -73,6 +73,7 @@ Some common patterns:
 - (0..63) -> pos -> board -> kind -> (1, 2, ... 7)
 - color - WHITE maps WHITE:BLACK -> 0:32, useful for indexing pos
 - COLOR - color maps WHITE:BLACK -> BLACK:WHITE
+- capt\_code[j-k]&code[p]&C\_DISTANT the piece on j has the capture code that can capture k, and it's distant (non-contact)
 #### Move Generation
 I will explore the qperft strategy for the following 3 move generation activities:
 1. Move serialization
@@ -159,3 +160,5 @@ Now let's look at white pawns
 asc[17] = 'P'.  Makes sense!  For every other piece kind, kind[(0..15)] + WHITE = kind[(32..47)].  But WPAWN != BPAWN.  This seems like an unnecessary complication introduced by this +- WHITE game.  This piece representation must offer some serious performance gains...
 <br>
 I think I can finally turn my attention to move generation!
+#### 11.05.2022
+I've finally hit a reference to `delta_vec` in move generation.  Today's goal is to understand this array.

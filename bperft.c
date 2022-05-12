@@ -179,6 +179,12 @@ void move_gen(int color, int lastply, int d){
 	for(p=FirstSlider[COLOR-color]; p<COLOR-WHITE+16-color; p++){
 		j = pos[p]; /* enemy slider */
 		if(j==0) continue;  /* currently captured */
+		// the utility of capture codes
+		if(capt_code[j-k]&code[p]&C_DISTANT){   /* slider aimed at our king */
+			v = delta_vec[j-k];
+			x = k;     /* trace ray from our King */
+			while((m=board[x+=v]) == DUMMY);
+		}
 	}
 
 }
