@@ -16,64 +16,6 @@ int randInt(int lb, int ub){
 	return rand() % (ub - lb + 1) + lb;
 }
 
-const int levels = 3;
-struct node {
-	int data;
-	char name[30];
-	struct node *children[4];
-};
-
-int indent(int data){
-	return levels - data + 1;
-}
-int numChildren(){
-	return sizeof(((struct node *)0) -> children) / sizeof(((struct node *)0) -> children[0]);
-}
-
-// returns pointer to node
-struct node* newNode(int data){
-	if(data == 0){
-		return NULL;
-	}
-	struct node* n = (struct node*)malloc(sizeof(struct node));
-	n -> data = data;
-	for(int i = 0 ; i < numChildren() ; i++){
-		n -> children[i] = newNode(data - 1);
-	}
-	return n;
-}
-
-
-void printNode(struct node* n){
-	printf(YEL "level: " reset "%d", n -> data);
-	for(int i = 0 ; i < numChildren() ; i++){
-		printf("\n");
-		for(int j = 0  ; j < indent(n -> data) ; j++){ printf("+"); }
-		if(n -> children[i] == NULL){
-			printf("null_child ");
-		} else {
-			printNode(n -> children[i]);
-		}
-	}
-}
-
-
-void nodeTest(){
-	struct node *n = newNode(levels);
-	printNode(n);
-}
-
-typedef struct {
-	int data;
-} STATE;
-typedef struct {
-	STATE hist[10];
-} BOARD;
-BOARD* init(){
-	BOARD *b = malloc(sizeof(BOARD));
-	return b;
-}
-
 void printBits(size_t const size, void const * const ptr){
 	// casting to uchar so we can iterate by "sizes" (bytes)
 	// b[0], b[1], ... are all of size uchar
@@ -94,8 +36,6 @@ int invertRows(int i){
 	return 0xB0 + i - 2 * (i - i % 0x10);
 }
 
-#define capt_code  (board+0xBC+0x77)      /* piece type that can reach this*/
-#define delta_vec  ((char *) board+0xBC+0xEF+0x77) /* step to bridge certain vector */
 /* capture codes */
 #define C_ORTH    1
 #define C_DIAG    2
@@ -105,48 +45,75 @@ int invertRows(int i){
 #define C_FDIAG   0x20
 #define C_BACKW   0x40
 #define C_BDIAG   0x80
+#define C_FERZ    (C_FDIAG|C_BDIAG)
+#define C_WAZIR   (C_SIDE|C_FORW|C_BACKW)
+#define C_KING    (C_FERZ|C_WAZIR)
+#define C_BISHOP  (C_FERZ|C_DIAG)
+#define C_ROOK    (C_WAZIR|C_ORTH)
+// white pawn
+#define C_WPAWN   (C_FDIAG)
+// black pawn
+#define C_BPAWN   (C_BDIAG)
+#define C_QUEEN   (C_BISHOP|C_ROOK)
+#define C_CONTACT (C_KING|C_KNIGHT)
+#define C_DISTANT (C_ORTH|C_DIAG)
 
-int main(){
-	initRand();
-	// make and print board
-	unsigned char b[0xBC];
-	for(int i = 0; i<0xBC; i++) b[i] = (i-0x22)&0x88 ? '-' : 'X';
-	for(int i = 0; i<0xBC + 4; i++){
-		if(i%0x10 == 0) printf("\n");
-		printf("%c ", (invertRows(i)-0x22)&0x88 ? '-' : 'X');
-	}
-	printf("\n================\n");
+#define capt_code  (board+0xBC+0x77)
+#define delta_vec  ((char *) board+0xBC+0xEF+0x77)
 
-	// =========================
-	// improving move generation
-	// =========================
-	// set up the board
-	unsigned char board[0xBC];
-	for(int i = 0; i<0xBC; i++) board[i] = (i-0x22)&0x88 ? '-' : 'X';
-	// constants for this 16x12 board
-	char
-		queen_dir[]   = {1, -1, 16, -16, 15, -15, 17, -17},
-		king_rose[]   = {1,17,16,15,-1,-17,-16,-15},
-		knight_rose[] = {18,33,31,14,-18,-33,-31,-14};
-	// start the clock
-	clock_t t = clock();
+// set up the board
+// board of size 0xBC + 2*0xEF for the delta_vec
+unsigned char board[0xBC + 2*0xEF];
+
+// constants for this 16x12 board
+char
+	queen_dir[]   = {1, -1, 16, -16, 15, -15, 17, -17},
+	king_rose[]   = {1,17,16,15,-1,-17,-16,-15},
+	knight_rose[] = {18,33,31,14,-18,-33,-31,-14};
+
+void delta_init(){
 	/* contact captures (cannot be blocked) */
 	capt_code[ 15] = capt_code[ 17] = C_FDIAG;
 	capt_code[-15] = capt_code[-17] = C_BDIAG;
 	capt_code[  1] = capt_code[ -1] = C_SIDE;
 	capt_code[ 16] = C_FORW;
 	capt_code[-16] = C_BACKW;
+	// so i can see where the middle is
+	capt_code[0] = 3;
 	for(int i = 0 ; i < 8 ; i++){
 		capt_code[knight_rose[i]] = C_KNIGHT;
 		delta_vec[knight_rose[i]] = knight_rose[i];
+		int scan_direction = queen_dir[i];
+		int dist_capt_code = i < 4 ? C_ORTH : C_DIAG;
+		int offset = 0;
+		for(int j = 0; j < 7; j++){
+			delta_vec[offset+=scan_direction] = scan_direction;
+			if(j) capt_code[offset] = dist_capt_code;
+		}
 	}
-	printf("size of size_t: %d\n", sizeof(unsigned char));
+}
+
+int main(){
+	// =========================
+	// improving move generation
+	// =========================
+	// init board
+	for(int i = 0; i<0xBC; i++) board[i] = (i-0x22)&0x88 ? '-' : 'X';
+
+	delta_init();
+
+	puts("capt_code: ");
 	for(int i = -0x77; i <= 0x77; i++){
-		printf("%d ", capt_code[i]);
+		if ((i + 0x77) % 16 == 0) puts("");
+		// printf("%c ", capt_code[i] ? '.' : 'X');
+		printf("%d ", capt_code[i] % 10);
 	}
 	puts("");
-	printf("size of char: %d\n", sizeof(char));
-	printf("size of uchar: %d\n", sizeof(unsigned char));
-	char a = -3;
-	printf("a: %u\n", (unsigned char)a);
+
+	puts("delta_vec: ");
+	for(int i = -0x77; i <= 0x77; i++){
+		if ((i + 0x77) % 16 == 0) puts("");
+		printf("%2d ", delta_vec[i] % 10);
+	}
+	puts("");
 }
