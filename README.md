@@ -1,12 +1,12 @@
 ## Goals
- * improve the performance of my perft
- * explore other board representations
+* improve the performance of my perft
+* implement a competent evaluation function
 
-My engine currently uses a 10x12 representation, which is the smallest setup that uses piece offsets with OFFBOARD checks.
+Current perft performance for my engine leaves a lot to be desired.  By stepping through the open source perft program `qperft.c`, I hope to learn some strategies for improvement.
 
 ### Disecting qperft.c
 #### Board Representation
-The memory location for the board seems to be the board itself plus capture codes and a delta vector (whatever that is).
+The memory location for the board stores the board itself plus capture codes and a delta vector (whatever that is).
 ```c
 #define board      (brd+1)                /* 12 x 16 board: dbl guard band */
 #define capt_code  (brd+1+0xBC+0x77)      /* piece type that can reach this*/
@@ -85,7 +85,7 @@ Perft mode is run by calling my engine with the `-p` flag.  When invoked, the fo
 1. FEN is parsed and board is initialized and printed
 1. A timer is started using clock\_t clock from time.h
 1. perft2 is run.  This function currently resides in eval.c and uses the [chess programming wiki implementation](https://www.chessprogramming.org/Perft)
-> I'ts important to understand the difference between perft and perft2: perft2 avoids the last make/unmake call by returning the number of legal moves at depth 1.  I am not yet sure which of these qperft uses, but for my own pride I hope it's using perft2!
+> It's important to understand the difference between perft and perft2: perft2 avoids the last make/unmake call by returning the number of legal moves at depth 1.  I am not yet sure which of these qperft uses, but for my own pride I hope it's using perft2!
 Inside perft2:
 1. Call `genLegalMoves`
 1. Call `makeMove`
@@ -139,26 +139,31 @@ Neither perft(6) nor perft(7) showed a statistically significant difference betw
 #### 09.05.2022
 Today's goal is simple: figure out why `pboard` isn't working!  Seems like the values of board are piece values with one of the color bits (`WHITE` or `BLACK`) set.
 If I make my board a char board, it should not be unsigned if I plan for OFFBOARD to be -1.
+
 Got it... forgot to call piece\_init...
-<br>
+
 Next mystery: why in asc are the pawns offset by different values than all the other pieces
 #### 10.05.2022
 The actual values of board are piece value (0..63) + WHITE, but with the important caveat that the black pieces are already offset by WHITE such that ((32..63) + WHITE) & WHITE = 0.  Also, having a nested for loop to print the board to invert the rows is a much simpler way of printing a board top to bottom than my `invertRow` function.
-<br>
+
 To find out the mystery from yesterday, let's take an example
 - black knight on B8 (0x93)
 - board[0x93] = 0x41 (can think of it as 0x21 + WHITE)
 - kind[0x41 - WHITE] = kind[0x21] = KING = 7
 - board[0x93]&WHITE = 0
+
 Everything checks out; asc[7] = 'k'
-<br>
+
 Now let's look at white pawns
 - white pawn on D4 (0x35)
 - board[0x35] = 0x33 (can think of it as 0x13 + WHITE)
 - kind[0x33 - WHITE] = kind[0x21] = WPAWN = 1
 - board[0x35]&WHITE = 32; 32>>1 = 16
+
 asc[17] = 'P'.  Makes sense!  For every other piece kind, kind[(0..15)] + WHITE = kind[(32..47)].  But WPAWN != BPAWN.  This seems like an unnecessary complication introduced by this +- WHITE game.  This piece representation must offer some serious performance gains...
-<br>
+
 I think I can finally turn my attention to move generation!
+
 #### 11.05.2022
 I've finally hit a reference to `delta_vec` in move generation.  Today's goal is to understand this array.
+
