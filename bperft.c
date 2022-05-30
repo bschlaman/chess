@@ -33,6 +33,11 @@
 #define pos  (pc+1+NUM_PIECES*2)
 #define code (pc+1+NUM_PIECES*3)
 
+/* Piece counts hidden in the unused Pawn section, indexed by color */
+#define LastKnight  (code-4)
+#define FirstSlider (code-3)
+#define FirstPawn   (code-2)
+
 #define WHITE  0x20     // 32    0b 0010 0000
 #define BLACK  0x40     // 64    0b 0100 0000
 #define COLOR  (BLACK|WHITE)  // 0b 0110 0000
@@ -95,6 +100,26 @@ void printBoard(unsigned char *b){
 void board_init(char *b){
 	for(int i = -1; i < 0xBC; i++)
 		b[i] = (i-0x22)&0x88 ? GUARD : DUMMY;
+}
+
+void delta_init(){
+	/* contact captures (cannot be blocked) */
+	capt_code[ 15] = capt_code[ 17] = C_FDIAG;
+	capt_code[-15] = capt_code[-17] = C_BDIAG;
+	capt_code[  1] = capt_code[ -1] = C_SIDE;
+	capt_code[ 16] = C_FORW;
+	capt_code[-16] = C_BACKW;
+	for(int i = 0; i < 8; i++){
+		capt_code[knight_rose[i]] = C_KNIGHT;
+		delta_vec[knight_rose[i]] = knight_rose[i];
+		int scan_direction = queen_dirs[i];
+		int dist_capt_code = i < 4 ? C_ORTH : C_DIAG;
+		int offset = 0;
+		for(int j = 0; j < 7; j++){
+			delta_vec[offset+=scan_direction] = scan_direction;
+			if(j) capt_code[offset] = dist_capt_code;
+		}
+	}
 }
 
 void piece_init(){
@@ -162,36 +187,40 @@ void pboard(char *b, int n, int bin)
 
 void move_gen(int color, int lastply, int d){
 	// color = WHITE or BLACK
-	int k, p, forward;
 	int first_move = msp;
+	int piece; // piece = board[i] (WPAWN + , BPAWN, KING, etc.)
 
-	k = pos[color-WHITE];   /* position of my King */
+	int k = pos[color-WHITE];   /* position of my King */
 	// 16, -16
-	forward = 48 - color;            /* forward step */
-	rank = 0x58 - (forward>>1);     /* 4th/5th rank */
-	prank = 0xD0 - 5*(color>>1);    /* 2nd/7th rank */
+	int forward = 48 - color;            /* forward step */
+	int rank = 0x58 - (forward>>1);     /* 4th/5th rank */
+	int prank = 0xD0 - 5*(color>>1);    /* 2nd/7th rank */
 	// lastply stores ep square and checks
-	ep_flag = lastply>>24&0xFF;
+	int ep_flag = lastply>>24&0xFF;
 	// msp = MoveStackPointer??
 	ep1 = ep2 = msp; Promo = 0;
 
 	// starts with pintest
-	for(p=FirstSlider[COLOR-color]; p<COLOR-WHITE+16-color; p++){
-		j = pos[p]; /* enemy slider */
-		if(j==0) continue;  /* currently captured */
-		// the utility of capture codes
-		if(capt_code[j-k]&code[p]&C_DISTANT){   /* slider aimed at our king */
-			v = delta_vec[j-k];
-			x = k;     /* trace ray from our King */
-			while((m=board[x+=v]) == DUMMY);
+	for(int i = FirstSlider[COLOR-color]; i < 16+color-WHITE; i++){
+		int slider_pos = pos[i]; /* enemy slider */
+		if(slider_pos==0) continue;  /* currently captured */
+		// the utility of capture codes:
+		// capt_code[delta]: what type of piece can capture
+		// code[i]: the capture type of piece at pos[i]
+		// C_DISTANT: it is a distant check, not C_ORTH | C_DIAG
+		if(capt_code[slider_pos - k] & code[i] & C_DISTANT){   /* slider aimed at our king */
+			int increment = delta_vec[slider_pos - k];
+			int offset = k;     /* trace ray from our King */
+			while((piece=board[offset+=increment]) == DUMMY);
 		}
 	}
-
 }
 
 int main(){
 	board_init(board);
+	delta_init();
 	piece_init();
 	setup();
+	pboard(board, 12, 0);
 	pboard(board, 12, 1);
 }

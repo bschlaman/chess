@@ -64,9 +64,7 @@ When `capt_code` is initialized; only the "elemental" captures are used:
 - C\_BDIAG
 "Higher order" capture codes like [ferz](https://en.wikipedia.org/wiki/Ferz) are synthesized from these foundational ones; e.g. `#define C_FERZ    (C_FDIAG|C_BDIAG)`.
 #### Piece Representation
-There is a pc array of size 4 * 64 (room for kind, cstl, pos, code)
-<br>
-Some common patterns:
+There is a pc array of size 4 * 64 (room for kind, cstl, pos, code).  Some common patterns:
 - board values are (0..63) + WHITE
 - board[(0x22..0x99)] - WHITE can be used as kind index to get piece type (2 types of pawns, 1 of everything else)
 - board[(0x22..0x99)]&WHITE think of as (board[(0x22..0x99)]-WHITE+WHITE)&WHITE is WHITE for (32 .63) but 0 for (0..31)
@@ -79,6 +77,8 @@ I will explore the qperft strategy for the following 3 move generation activitie
 1. Move serialization
 1. Legal move generation
 1. Make / Unmake
+
+During legal move generation, the first step is a pintest.  We scan through the piece list starting at FirstSlider[OpponentColor] and end where pawns start in pos.  I prefer to rewrite `COLOR-WHITE+16-color` as `16+color-WHITE`.
 
 ### My Current Perft Implementation
 Perft mode is run by calling my engine with the `-p` flag.  When invoked, the following occurs:
@@ -102,6 +102,8 @@ genLegalMoves:
 - Avoid accessing memory like `bs -> board`; this is expensive due to potential cache misses
 - Avoid branching
 #### genLegalMoves improvements
+- Don't scan through the board looking for pieces on legal move generation.  Instead scan through a piece list
+- In the pieces array, keep track of sliders and knights sepparately for pintests
 #### makeMove improvements
 #### undoMove improvements
 
@@ -117,11 +119,11 @@ TODO: run compare to results on rpi
 - Is there a reason OFFBOARD needs to be -1 in my case, or can it just be a regular enum?
 - LastKnight, FirstSlider, etc are probably optimizations for board scanning
 - Doesn't seem like first 32 elements of `kind` have been initialized before looping over them on line 178...
-- Unused `kind` elements are probably for promotions.  Not sure why the king and two knights are on the left side of these open slots
+- Unused kind, pos, and code elements are promotions.  Knights and sliders are like stacks that grow in opposite directions when a pawn is promoted.
 - One major difference between qperft and my engine is that qperft uses global arrays for the board and pieces, whereas I use a struct whose pointer I pass around.  Any issues with that?
 - `FirstSlider` is not the first slider on the board, but rather the first slider in the kind / pos / code arrays
 - Why offset board values by WHITE?  It would be just as easy to store the (0..63) values, and a color check would be as easy as &32
-- qperft maintains a piece list that allows for optimizations like maintaining the location of all the sliders for pintest checking.  The downside to this approach is that it doesn't allow for unconventional board positions.  One of my requirements for my engine is to be able to handle such positions (e.g. white has 42 bishops); a possible solution is to simply make the piece list array much larger, allowing for up to 64 of each type of piece.  Problem is that this could get expensive as I need to know where to stop scanning through slider pieces.
+- qperft maintains a piece list that allows for optimizations like maintaining the location of all the sliders for pintest checking.  The downside to this approach is that it doesn't allow for unconventional board positions.  One of my requirements for my engine is to be able to handle such positions (e.g. white has 42 bishops); a possible solution is to simply make the piece list array much larger, allowing for up to 64 of each type of piece.  I can still use the double stack approach for tracking knights vs sliders; there will just be a much larger gap inbetween the last knight and first slider.
 
 ### Daily Notes
 #### 08.05.2022
@@ -169,6 +171,7 @@ I think I can finally turn my attention to move generation!
 I've finally hit a reference to `delta_vec` in move generation.  Today's goal is to understand this array.  The memory locations for the board + delta arrays is:
 
 `[0 ... 0xBB][0xBC ... 0xBC+0x77 ... 0xBC+0x77+0x77][0xBC+0xEF ... 0xBC+0xEF+0x77 ... 0xBC+0xEF+0x77+0x77]`
+<br>
 `[ (board)  ][         (capt_code)                 ][                  (delta_vec)                       ]`
 
 `capt_code` is simply a mapping of a 2d directional vector to 1d space, where the relationship is a capture enum.
