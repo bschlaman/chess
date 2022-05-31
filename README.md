@@ -104,6 +104,7 @@ genLegalMoves:
 #### genLegalMoves improvements
 - Don't scan through the board looking for pieces on legal move generation.  Instead scan through a piece list
 - In the pieces array, keep track of sliders and knights sepparately for pintests
+- I can't find any online resources that claim a performance hit when declaring variables inside loops.  Until I'm proven otherwise, I should declare variables as locally as possible.
 #### makeMove improvements
 #### undoMove improvements
 
@@ -124,6 +125,7 @@ TODO: run compare to results on rpi
 - `FirstSlider` is not the first slider on the board, but rather the first slider in the kind / pos / code arrays
 - Why offset board values by WHITE?  It would be just as easy to store the (0..63) values, and a color check would be as easy as &32
 - qperft maintains a piece list that allows for optimizations like maintaining the location of all the sliders for pintest checking.  The downside to this approach is that it doesn't allow for unconventional board positions.  One of my requirements for my engine is to be able to handle such positions (e.g. white has 42 bishops); a possible solution is to simply make the piece list array much larger, allowing for up to 64 of each type of piece.  I can still use the double stack approach for tracking knights vs sliders; there will just be a much larger gap inbetween the last knight and first slider.
+- qperft mentions that piece locaters like `LastKnight` can change upon promotion or list compactification.  I don't yet see code for compactification, but good to know that this is a reasonable problem to face.
 
 ### Daily Notes
 #### 08.05.2022
@@ -175,4 +177,4 @@ I've finally hit a reference to `delta_vec` in move generation.  Today's goal is
 `[ (board)  ][         (capt_code)                 ][                  (delta_vec)                       ]`
 
 `capt_code` is simply a mapping of a 2d directional vector to 1d space, where the relationship is a capture enum.
-`delta_vec` is the rayVec concept from [this CPW article](https://www.chessprogramming.org/Vector_Attacks).  It essentially returns the increment given a board vector.
+`delta_vec` is the rayVec concept from [this CPW article](https://www.chessprogramming.org/Vector_Attacks).  It essentially returns the increment given a board vector that should be used when traversing that vector (ray).

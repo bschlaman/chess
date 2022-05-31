@@ -136,6 +136,21 @@ void piece_init(){
 	// i will purposely not address what i think is a
 	// bug that kind is not fully initialized above
 	for(int i=0; i < NUM_PIECES; i++) code[i] = capts[kind[i]];
+	/* set castling spoilers (King and both original Rooks) */
+	cstl[0]        = WHITE;
+	cstl[12]       = WHITE>>2;
+	cstl[13]       = WHITE>>4;
+	cstl[0 +WHITE] = BLACK;
+	cstl[12+WHITE] = BLACK>>2;
+	cstl[13+WHITE] = BLACK>>4;
+
+	/* piece counts (can change when we compactify lists, or promote) */
+	LastKnight[WHITE]  =  2;
+	FirstSlider[WHITE] = 11;
+	FirstPawn[WHITE]   = 16;
+	LastKnight[BLACK]  =  2+WHITE;
+	FirstSlider[BLACK] = 11+WHITE;
+	FirstPawn[BLACK]   = 16+WHITE;
 }
 
 void setup(){   /* put pieces on the board according to the piece list */
@@ -188,7 +203,6 @@ void pboard(char *b, int n, int bin)
 void move_gen(int color, int lastply, int d){
 	// color = WHITE or BLACK
 	int first_move = msp;
-	int piece; // piece = board[i] (WPAWN + , BPAWN, KING, etc.)
 
 	int k = pos[color-WHITE];   /* position of my King */
 	// 16, -16
@@ -200,18 +214,40 @@ void move_gen(int color, int lastply, int d){
 	// msp = MoveStackPointer??
 	ep1 = ep2 = msp; Promo = 0;
 
+	int piece; // piece = board[i] (WPAWN + color, KING + color, etc.)
+
 	// starts with pintest
 	for(int i = FirstSlider[COLOR-color]; i < 16+color-WHITE; i++){
-		int slider_pos = pos[i]; /* enemy slider */
-		if(slider_pos==0) continue;  /* currently captured */
+		int opp_slider_pos = pos[i]; /* enemy slider */
+		if(opp_slider_pos==0) continue;  /* currently captured */
 		// the utility of capture codes:
 		// capt_code[delta]: what type of piece can capture
 		// code[i]: the capture type of piece at pos[i]
 		// C_DISTANT: it is a distant check, not C_ORTH | C_DIAG
-		if(capt_code[slider_pos - k] & code[i] & C_DISTANT){   /* slider aimed at our king */
-			int increment = delta_vec[slider_pos - k];
+		if(capt_code[opp_slider_pos - k] & code[i] & C_DISTANT){   /* slider aimed at our king */
+			int increment = delta_vec[opp_slider_pos - k];
 			int offset = k;     /* trace ray from our King */
-			while((piece=board[offset+=increment]) == DUMMY);
+			while((piece = board[offset+=increment]) == DUMMY);
+			if(offset == opp_slider_pos){ // distance check
+				in_check += 2;
+				opp_checker_pos = opp_slider_pos;
+				// careful: direction and increment refer to the same idea
+				check_direction = increment;
+			} else if(piece & color){
+				// if this is our piece
+				int our_piece_offset = offset;
+				while(board[our_piece_offset+=increment] == DUMMY);
+				if(our_piece_offset == opp_slider_pos){
+					// pinned at offset
+					/* remove our piece from piece list */
+					/* and put on pin stack             */
+					piece -= WHITE; // switch color?
+					ppos[psp] = pos[m];
+					pos[m] = 0;
+					pstack[psp++] = m;
+					z = x<<8;
+				}
+			}
 		}
 	}
 }
