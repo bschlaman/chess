@@ -113,7 +113,7 @@ int main(){
 	puts("delta_vec: ");
 	for(int i = -0x77; i <= 0x77; i++){
 		if ((i + 0x77) % 16 == 0) puts("");
-		printf("%2d ", delta_vec[i] % 10);
+		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
 }

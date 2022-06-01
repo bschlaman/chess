@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+// MACROS
+#define ABS(N) ((N<0)?(-N):(N))
+
 /* capture codes */
 #define C_ORTH    1
 #define C_DIAG    2
@@ -203,6 +206,7 @@ void pboard(char *b, int n, int bin)
 void move_gen(int color, int lastply, int d){
 	// color = WHITE or BLACK
 	int first_move = msp;
+	int pstack[12], ppos[12], psp=0;
 
 	int k = pos[color-WHITE];   /* position of my King */
 	// 16, -16
@@ -225,30 +229,79 @@ void move_gen(int color, int lastply, int d){
 		// code[i]: the capture type of piece at pos[i]
 		// C_DISTANT: it is a distant check, not C_ORTH | C_DIAG
 		if(capt_code[opp_slider_pos - k] & code[i] & C_DISTANT){   /* slider aimed at our king */
-			int increment = delta_vec[opp_slider_pos - k];
+			// vector is normalized to magnitude 1sq!
+			int vector = delta_vec[opp_slider_pos - k];
 			int offset = k;     /* trace ray from our King */
-			while((piece = board[offset+=increment]) == DUMMY);
+			while((piece = board[offset+=vector]) == DUMMY);
 			if(offset == opp_slider_pos){ // distance check
 				in_check += 2;
 				opp_checker_pos = opp_slider_pos;
-				// careful: direction and increment refer to the same idea
-				check_direction = increment;
+				check_vector = vector;
 			} else if(piece & color){
 				// if this is our piece
-				int our_piece_offset = offset;
-				while(board[our_piece_offset+=increment] == DUMMY);
-				if(our_piece_offset == opp_slider_pos){
+				// csq: candidate square
+				int csq = offset;
+				while(board[csq+=vector] == DUMMY);
+				if(csq == opp_slider_pos){
 					// pinned at offset
 					/* remove our piece from piece list */
 					/* and put on pin stack             */
-					piece -= WHITE; // switch color?
-					ppos[psp] = pos[m];
-					pos[m] = 0;
-					pstack[psp++] = m;
-					z = x<<8;
+					piece -= WHITE; // hmmm why not piece -= color?
+					ppos[psp] = pos[piece];
+					pstack[psp++] = piece;
+					pos[piece] = 0;
+					z = offset<<8;
+					if(kind[piece] == BPAWN || kind[piece] == WPAWN){
+						csq = offset + forward;
+						if(ABS(vector) == 16){ // pawn along file
+							if(!(board[csq] & COLOR)){
+								PUSH(z, csq);
+								csq += forward; Promo++;
+								if(!(board[csq] & COLOR | (rank^csq))) PUSH(z, csq|csq<<24);
+							}
+						} else {
+							// diagnonal pin
+							if(csq+1==opp_slider_pos) { Promo++; PUSH(z,csq+1) }
+							if(csq-1==opp_slider_pos) { Promo++; PUSH(z,csq-1) }
+						}
+					} else if(code[piece]&capt_code[opp_slider_pos-k]&C_DISTANT) {
+						// not a pawn; slider can move along ray
+						csq = offset;
+						do {
+							csq += vector;
+							PUSH(z, csq);
+						} while(csq != opp_slider_pos);
+						csq = offset;
+						while((csq -= vector) != k) PUSH(z, csq);
+					}
 				}
 			}
 		}
+	} // done with pin test
+	/* determine if opponent's move put us in contact check */
+	// remember contact check includes knights
+	csq = lastply&0xFF;
+	if(capt_code[csq - k] & code[board[csq]-WHITE] & C_CONTACT){
+		opp_checker_pos = csq; in_check++;
+		check_vector = delta_vec[opp_slider_pos-k];
+	}
+	/* determine how to proceed based on check situation    */
+	if(in_check){
+		/* purge moves with pinned pieces if in check   */
+		msp = first_move;
+		if(in_check > 2) goto King_Moves; /* double check */
+		if(opp_checker_pos == ep_flag) { ep1 = msp; goto ep_Captures; }
+		goto Regular_Moves;
+	}
+	/* generate castlings */
+	ep1 = msp;
+	if(!(color&CasRights)){
+		if(!(board[k+1]^DUMMY|board[k+2]^DUMMY|
+					CasRights&color>>4))
+			PUSH(k<<8,k+2+0xB0000000+0x3000000)
+				if(!(board[k-1]^DUMMY|board[k-2]^DUMMY|board[k-3]^DUMMY|
+							CasRights&color>>2))
+					PUSH(k<<8,k-2+0xB0000000-0x4000000)
 	}
 }
 
