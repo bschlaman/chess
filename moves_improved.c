@@ -1,19 +1,20 @@
 #include <stdlib.h>
 
 #define BOARD_SIZE 64
+#define VIRTUAL_BOARD_SIZE 120
 
 typedef enum { WHITE, BLACK } SIDE;
-// 0 0 0 0
-enum { WKCA = 8, WQCA = 4, BKCA = 2, BQCA = 1 };
 enum {
 	OFFBOARD, EMPTY,
 	wP, wN, wB, wR, wQ, wK,
 	bP, bN, bB, bR, bQ, bK
 };
-enum { KNIGHT, BISHOP, ROOK, QUEEN, KING } TYPE;
+enum { KNIGHT, BISHOP, ROOK, QUEEN, KING } PIECE_TYPE;
+// 0 0 0 0
+enum { WKCA = 8, WQCA = 4, BKCA = 2, BQCA = 1 };
 
 typedef struct {
-	int board[120];
+	int board[VIRTUAL_BOARD_SIZE];
 	int ply;
 	SIDE stm;
 	int enPas;
@@ -24,24 +25,12 @@ char sliders[2][BOARD_SIZE], contact[2][BOARD_SIZE];
 // should these be arrays of pointers?
 char last_slider[2], last_knight[2];
 
-void resetBoard(BOARD_STATE *bs){
-	int i;
-	for(i = 0 ; i < 120 ; i++){
+void init(BOARD_STATE *bs){
+	for(int i = 0 ; i < VIRTUAL_BOARD_SIZE ; i++)
 		bs -> board[i] = OFFBOARD;
-	}
-	for(i = 0 ; i < 64 ; i++){
+	for(int i = 0 ; i < BOARD_SIZE ; i++)
 		bs -> board[sq64to120(i)] = EMPTY;
-	}
-	bs -> stm = NEITHER;
-	bs -> castlePermission = 0;
-	bs -> enPas = OFFBOARD;
 	bs -> ply = 1;
-	bs -> kingSq[WHITE] = E1;
-	bs -> kingSq[BLACK] = E8;
-	bs -> pinned = 0ULL;
-}
-void init(){
-	
 }
 
 void genLegalMovesImproved(BOARD_STATE *bs){
@@ -59,5 +48,5 @@ void main(){
 	// printBoard(bs, OPT_PINNED);
 
 	// print moves
-	printLegalMoves(bs);
+	// printLegalMoves(bs);
 }
