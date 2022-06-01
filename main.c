@@ -597,6 +597,8 @@ void resetBoard(BOARD_STATE *bs){
 	bs -> pinned = 0ULL;
 }
 
+// TODO: use enum bit flags for options
+// e.g. OPT_64_BOARD|OPT_PINNED
 void printBoard(BOARD_STATE *bs, int option){
 	int i, index120, rank, file, piece, sq64;
 

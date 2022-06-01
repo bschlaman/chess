@@ -40,9 +40,9 @@ enum {
 	TSW = -11,
 };
 
+typedef enum { WHITE, BLACK } SIDE;
 // 0 0 0 0
 enum { WKCA = 8, WQCA = 4, BKCA = 2, BQCA = 1 };
-enum { WHITE, BLACK, NEITHER };
 enum { EMPTY, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, CANDIDATESQ };
 enum { KNIGHT, BISHOP, ROOK, QUEEN, KING };
 // move encoding, using the chess programming wiki method
@@ -83,7 +83,7 @@ typedef struct {
 	int ply;
 
 	// side to move
-	bool stm;
+	SIDE stm;
 	int enPas;
 	int castlePermission;
 
