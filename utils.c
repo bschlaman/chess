@@ -25,7 +25,7 @@ int frToSq64(int file, int rank){
 // copy algebraic notation of sq120 into sqStrPtr
 void getAlgebraic(char *sqStrPtr, int sq120){
 	int sq64 = sq120to64(sq120);
-	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};;
+	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};
 	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-' ; *p++ = '\0'; }
 	strcpy(sqStrPtr, sqAN);
 }

@@ -588,7 +588,6 @@ void resetBoard(BOARD_STATE *bs){
 	for(i = 0 ; i < 64 ; i++){
 		bs -> board[sq64to120(i)] = EMPTY;
 	}
-	bs -> stm = NEITHER;
 	bs -> castlePermission = 0;
 	bs -> enPas = OFFBOARD;
 	bs -> ply = 1;
