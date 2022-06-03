@@ -37,9 +37,19 @@ typedef struct {
 	int castlePermission;
 } BOARD_STATE;
 
+// util functions
 void parseFEN(BOARD_STATE *bs, char *fen);
 int sq64to120(int sq64);
 int sq120to64(int sq120);
+int frToSq64(int file, int rank);
+
+// elemental attack types
+enum {
+	ATTACK_FORWARDS,
+	ATTACK_BCKWARDS,
+	ATTACK_SIDE,
+	ATTACK_DISTANT,
+}
 
 // translate up, right, down, left, etc.
 enum {
@@ -52,7 +62,7 @@ enum {
 	TSE =  -9,
 	TSW = -11,
 };
-const char pieceChar[] = ".PNBRQKpnbrqkx";
+const char pieceChar[] = "-.PNBRQKpnbrqk";
 const char castleChar[] = "KQkq";
 const int numDirections[] = {8, 4, 4, 8, 8};
 const int translation[][8] = {
@@ -68,7 +78,7 @@ enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
 
 char sliders[2][BOARD_SIZE], contact[2][BOARD_SIZE];
 // should these be arrays of pointers?
-char last_slider[2], last_knight[2];
+char last_slider_index[2], last_contact_index[2];
 
 void print_board(BOARD_STATE *bs, int opt){
 	if(opt & OPT_VBOARD){
@@ -83,6 +93,23 @@ void print_board(BOARD_STATE *bs, int opt){
 		}
 		puts("");
 	}
+	if(opt & OPT_64_BOARD){
+		printf(YEL " ---- Game Board ---- \n" reset);
+		for(int rank = 8; rank >= 1; rank--){
+			printf(RED "%d " reset, rank);
+			for(int file = 1; file <= 8; file++){
+				int piece = bs -> board[sq64to120(frToSq64(file, rank))];
+				printf("%2c", pieceChar[piece]);
+			}
+			puts("");
+		}
+		// print the files
+		printf("\n  ");
+		for(int file = 0; file < 8; file++){
+			printf(RED "%2c" reset, file + 'a');
+		}
+		puts("");
+	}
 }
 
 void init(BOARD_STATE *bs){
@@ -93,7 +120,16 @@ void init(BOARD_STATE *bs){
 	bs -> ply = 1;
 }
 
-void genLegalMoves(BOARD_STATE *bs){
+void gen_legal_moves(BOARD_STATE *bs){
+	SIDE side = bs -> stm;
+	int ksq = contact[side][0];
+	// pintest
+	for(int i = 0; i <= last_slider_index[side]; i++){
+		int opp_slider_sq = sliders[i];
+		// should i use a new flag like "CAPTURED"?
+		if(opp_slider_sq == EMPTY) continue;
+		// check if this piece can attack our king square
+	}
 	return;
 }
 
