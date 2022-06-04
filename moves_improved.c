@@ -45,11 +45,26 @@ int frToSq64(int file, int rank);
 
 // elemental attack types
 enum {
-	ATTACK_FORWARDS,
-	ATTACK_BCKWARDS,
-	ATTACK_SIDE,
-	ATTACK_DISTANT,
-}
+	A_CONTACT_FORW      = 0x01,
+	A_CONTACT_BCKW      = 0x02,
+	A_CONTACT_FORW_DIAG = 0x04,
+	A_CONTACT_BCKW_DIAG = 0x08,
+	A_CONTACT_SIDE      = 0x10,
+	A_KNIGHT            = 0x20,
+	A_DISTANT_ORTH      = 0x40,
+	A_DISTANT_DIAG      = 0x80,
+
+	A_WPAWN   = A_CONTACT_FORW_DIAG,
+	A_BPAWN   = A_CONTACT_BCKW_DIAG,
+	A_FERZ    = A_CONTACT_FORW_DIAG | A_CONTACT_BCKW_DIAG,
+	A_WAZIR   = A_CONTACT_SIDE | A_CONTACT_FORW | A_CONTACT_BCKW,
+	A_KING    = A_FERZ | A_WAZIR,
+	A_BISHOP  = A_DISTANT_DIAG | A_FERZ,
+	A_ROOK    = A_DISTANT_ORTH | A_WAZIR,
+	A_QUEEN   = A_BISHOP | A_ROOK,
+	A_CONTACT = A_KNIGHT | A_KING,
+	A_DISTANT = A_DISTANT_ORTH | A_DISTANT_DIAG,
+};
 
 // translate up, right, down, left, etc.
 enum {
@@ -76,9 +91,11 @@ const int translation[][8] = {
 // print_board opts
 enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
 
-char sliders[2][BOARD_SIZE], contact[2][BOARD_SIZE];
+int sliders[2][BOARD_SIZE], contact[2][BOARD_SIZE];
 // should these be arrays of pointers?
-char last_slider_index[2], last_contact_index[2];
+int last_slider_index[2], last_contact_index[2];
+int a_v[1], increment_vector[123], ctype[BOARD_SIZE];
+int *attack_vector = (a_v) + 4;
 
 void print_board(BOARD_STATE *bs, int opt){
 	if(opt & OPT_VBOARD){
@@ -124,11 +141,15 @@ void gen_legal_moves(BOARD_STATE *bs){
 	SIDE side = bs -> stm;
 	int ksq = contact[side][0];
 	// pintest
-	for(int i = 0; i <= last_slider_index[side]; i++){
-		int opp_slider_sq = sliders[i];
+	for(int i = 0; i <= last_slider_index[!side]; i++){
+		int opp_slider_sq = sliders[!side][i];
 		// should i use a new flag like "CAPTURED"?
 		if(opp_slider_sq == EMPTY) continue;
 		// check if this piece can attack our king square
+		int vector = increment_vector[opp_slider_sq - ksq];
+		if(attack_vector[opp_slider_sq - ksq] & ctype[opp_slider_sq] & A_DISTANT){
+			printf("slider aimed at king\n");
+		}
 	}
 	return;
 }
