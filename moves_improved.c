@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include "data_improved.c"
 #include "colors.h"
 
 #define ASSERT(n) \
 if(!(n)){ \
-    printf(RED "====== ERROR\n" YEL "%s\n" reset, #n); \
+    printf(RED "====== assert error\n" YEL "%s\n" reset, #n); \
     printf(RED "file: " reset "%s ", __FILE__); \
     printf(RED "line: " reset "%d\n", __LINE__); \
     exit(1); \
@@ -18,6 +19,7 @@ if(!(n)){ \
 #define VBOARD_HEIGHT 12
 #define VBOARD_SIZE 120
 #define BOARD_TO_VBOARD_OFFSET 21
+#define MAX_VBOARD_DISTANCE 77
 
 typedef enum { WHITE, BLACK } SIDE;
 enum {
@@ -42,6 +44,7 @@ void parseFEN(BOARD_STATE *bs, char *fen);
 int sq64to120(int sq64);
 int sq120to64(int sq120);
 int frToSq64(int file, int rank);
+void print_board(BOARD_STATE *bs, int opt);
 
 // elemental attack types
 enum {
@@ -82,20 +85,134 @@ const char castleChar[] = "KQkq";
 const int numDirections[] = {8, 4, 4, 8, 8};
 const int translation[][8] = {
 	{-21, -12, 8, 19, 21, 12, -8, -19}, // knights 0
-	{TSW, TNW, TNE, TSE}, // bishops TRT
-	{TDN, TLF, TUP, TRT}, // rooks 2
-	{TSW, TNW, TNE, TSE, TDN, TLF, TUP, TRT}, // queens 3
-	{TSW, TNW, TNE, TSE, TDN, TLF, TUP, TRT}  // kings 4
+	{TNE, TSE, TSW, TNW}, // bishops 1
+	{TUP, TRT, TDN, TLF}, // rooks 2
+	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW}, // queens 3
+	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW}  // kings 4
 };
 
 // print_board opts
 enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
 
-int sliders[2][BOARD_SIZE], contact[2][BOARD_SIZE];
-// should these be arrays of pointers?
-int last_slider_index[2], last_contact_index[2];
-int a_v[1], increment_vector[123], ctype[BOARD_SIZE];
-int *attack_vector = (a_v) + 4;
+int
+	sliders[2][BOARD_SIZE],
+	contact[2][BOARD_SIZE],
+	pawns[2][BOARD_SIZE];
+int
+	last_slider_index[2],
+	last_contact_index[2] = {1, 1},
+	last_pawn_index[2];
+
+// used primarily for pintests
+// const int max_distance = H8-A1;
+int
+	i_v[1 + 2 * MAX_VBOARD_DISTANCE],
+	a_t[1 + 2 * MAX_VBOARD_DISTANCE];
+// allow for negative indices
+#define increment_vector (i_v + MAX_VBOARD_DISTANCE)
+#define attack_type      (a_t + MAX_VBOARD_DISTANCE)
+
+void init_vectors(){
+	attack_type[TUP] = A_CONTACT_FORW;
+	attack_type[TDN] = A_CONTACT_BCKW;
+	attack_type[TRT] = A_CONTACT_SIDE;
+	attack_type[TLF] = A_CONTACT_SIDE;
+	attack_type[TNE] = A_CONTACT_FORW_DIAG;
+	attack_type[TNW] = A_CONTACT_FORW_DIAG;
+	attack_type[TSE] = A_CONTACT_BCKW_DIAG;
+	attack_type[TSW] = A_CONTACT_BCKW_DIAG;
+	for(int i = 0; i < 8; i++){
+		attack_type[translation[KNIGHT][i]] = A_KNIGHT;
+		increment_vector[translation[KNIGHT][i]] = translation[KNIGHT][i];
+		int sq_offset = 0;
+		int increment = translation[QUEEN][i];
+		int distant_attack_type = i < 4 ? A_DISTANT_ORTH : A_DISTANT_DIAG;
+		for(int j = 0; j < 7; j++){
+			increment_vector[sq_offset+=increment] = increment;
+			if(j) attack_type[sq_offset] = distant_attack_type;
+		}
+	}
+}
+
+void init_board(BOARD_STATE *bs){
+	for(int i = 0 ; i < VBOARD_SIZE ; i++)
+		bs -> board[i] = OFFBOARD;
+	for(int i = 0 ; i < BOARD_SIZE ; i++)
+		bs -> board[sq64to120(i)] = EMPTY;
+	bs -> ply = 1;
+}
+
+void init_pieces(BOARD_STATE *bs){
+	ASSERT(last_slider_index[BLACK] == 0);
+	ASSERT(last_slider_index[WHITE] == 0);
+	ASSERT(last_contact_index[BLACK] == 1);
+	ASSERT(last_contact_index[WHITE] == 1);
+	ASSERT(last_pawn_index[BLACK] == 0);
+	ASSERT(last_pawn_index[WHITE] == 0);
+	// initialize pieces from board or board from pieces?
+	for(int i = 0 ; i < BOARD_SIZE ; i++){
+		int sq120i = sq64to120(i);
+		switch(bs -> board[sq120i]){
+			case bP:
+				pawns[BLACK][last_pawn_index[BLACK]++] = sq120i;
+			case wP:
+				pawns[WHITE][last_pawn_index[WHITE]++] = sq120i;
+			case bN:
+				contact[BLACK][last_contact_index[BLACK]++] = sq120i;
+			case wN:
+				contact[WHITE][last_contact_index[WHITE]++] = sq120i;
+			case bB:
+			case bR:
+			case bQ:
+				sliders[BLACK][last_slider_index[BLACK]++] = sq120i;
+			case wB:
+			case wR:
+			case wQ:
+				sliders[WHITE][last_slider_index[WHITE]++] = sq120i;
+			case bK:
+				contact[BLACK][0] = sq120i;
+			case wK:
+				contact[WHITE][0] = sq120i;
+		}
+	}
+	ASSERT(bs -> board[contact[BLACK][0]] = bK);
+	ASSERT(bs -> board[contact[WHITE][0]] = wK);
+}
+
+void gen_legal_moves(BOARD_STATE *bs){
+	SIDE side = bs -> stm;
+	int ksq = contact[side][0];
+	// pintest
+	for(int i = 0; i <= last_slider_index[!side]; i++){
+		int opp_slider_sq = sliders[!side][i];
+		// should i use a new flag like "CAPTURED"?
+		if(opp_slider_sq == EMPTY) continue;
+		// check if this piece can attack our king square
+		int vector = increment_vector[opp_slider_sq - ksq];
+		if(attack_type[opp_slider_sq - ksq] & attack_type[opp_slider_sq] & A_DISTANT){
+			printf("slider aimed at king\n");
+		}
+	}
+	return;
+}
+
+void main(){
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
+	char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
+	// TODO: i dont like having to parseFEN between these init steps
+	init_board(bs);
+	parseFEN(bs, testFEN);
+	init_pieces(bs);
+	init_vectors();
+
+	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
+}
+
+// UTILS BELOW main
+/*
+utils like fen parser for temporary use while
+i make improvements to move generation
+*/
 
 void print_board(BOARD_STATE *bs, int opt){
 	if(opt & OPT_VBOARD){
@@ -128,45 +245,6 @@ void print_board(BOARD_STATE *bs, int opt){
 		puts("");
 	}
 }
-
-void init(BOARD_STATE *bs){
-	for(int i = 0 ; i < VBOARD_SIZE ; i++)
-		bs -> board[i] = OFFBOARD;
-	for(int i = 0 ; i < BOARD_SIZE ; i++)
-		bs -> board[sq64to120(i)] = EMPTY;
-	bs -> ply = 1;
-}
-
-void gen_legal_moves(BOARD_STATE *bs){
-	SIDE side = bs -> stm;
-	int ksq = contact[side][0];
-	// pintest
-	for(int i = 0; i <= last_slider_index[!side]; i++){
-		int opp_slider_sq = sliders[!side][i];
-		// should i use a new flag like "CAPTURED"?
-		if(opp_slider_sq == EMPTY) continue;
-		// check if this piece can attack our king square
-		int vector = increment_vector[opp_slider_sq - ksq];
-		if(attack_vector[opp_slider_sq - ksq] & ctype[opp_slider_sq] & A_DISTANT){
-			printf("slider aimed at king\n");
-		}
-	}
-	return;
-}
-
-void main(){
-	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
-	parseFEN(bs, testFEN);
-
-	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
-}
-
-// UTILS BELOW main
-/*
-utils like fen parser for temporary use while
-i make improvements to move generation
-*/
 
 int sq64to120(int sq64){
 	return sq64 + 21 + 2 * (sq64 - sq64 % 8) / 8;
@@ -278,9 +356,9 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 		}
 
 		if(piece == wK)
-			sliders[WHITE][0] = sq64to120(frToSq64(file, rank));
+			contact[WHITE][0] = sq64to120(frToSq64(file, rank));
 		if(piece == bK)
-			sliders[BLACK][0] = sq64to120(frToSq64(file, rank));
+			contact[BLACK][0] = sq64to120(frToSq64(file, rank));
 
 		for(int i = 0 ; i < num ; i++){
 			bs -> board[sq64to120(frToSq64(file, rank))] = piece;
