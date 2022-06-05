@@ -25,7 +25,7 @@ typedef enum { WHITE, BLACK } SIDE;
 enum {
 	OFFBOARD, EMPTY,
 	wP, wN, wB, wR, wQ, wK,
-	bP, bN, bB, bR, bQ, bK
+	bP, bN, bB, bR, bQ, bK,
 };
 enum { KNIGHT, BISHOP, ROOK, QUEEN, KING } PIECE_TYPE;
 // 0 0 0 0
@@ -45,6 +45,7 @@ int sq64to120(int sq64);
 int sq120to64(int sq120);
 int frToSq64(int file, int rank);
 void print_board(BOARD_STATE *bs, int opt);
+char *get_algebraic(int sq120);
 
 // elemental attack types
 enum {
@@ -88,7 +89,12 @@ const int translation[][8] = {
 	{TNE, TSE, TSW, TNW}, // bishops 1
 	{TUP, TRT, TDN, TLF}, // rooks 2
 	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW}, // queens 3
-	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW}  // kings 4
+	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW},  // kings 4
+};
+const int attack_map[] = {
+	0, 0,
+	A_WPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
+	A_BPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
 };
 
 // print_board opts
@@ -149,37 +155,38 @@ void init_pieces(BOARD_STATE *bs){
 	ASSERT(last_contact_index[WHITE] == 1);
 	ASSERT(last_pawn_index[BLACK] == 0);
 	ASSERT(last_pawn_index[WHITE] == 0);
-	for(int i = 0 ; i < BOARD_SIZE ; i++){
+	for(int i = 0; i < BOARD_SIZE; i++){
 		int sq120i = sq64to120(i);
 		// TODO: I could add breaks here but I don't need to optomize this function
 		switch(bs -> board[sq120i]){
 			case bP:
-				pawns[BLACK][last_pawn_index[BLACK]++] = sq120i;
+				pawns[BLACK][last_pawn_index[BLACK]++] = sq120i; break;
 			case wP:
-				pawns[WHITE][last_pawn_index[WHITE]++] = sq120i;
+				pawns[WHITE][last_pawn_index[WHITE]++] = sq120i; break;
 			case bN:
-				contact[BLACK][last_contact_index[BLACK]++] = sq120i;
+				contact[BLACK][last_contact_index[BLACK]++] = sq120i; break;
 			case wN:
-				contact[WHITE][last_contact_index[WHITE]++] = sq120i;
+				contact[WHITE][last_contact_index[WHITE]++] = sq120i; break;
 			case bB:
 			case bR:
 			case bQ:
-				sliders[BLACK][last_slider_index[BLACK]++] = sq120i;
+				sliders[BLACK][last_slider_index[BLACK]++] = sq120i; break;
 			case wB:
 			case wR:
 			case wQ:
-				sliders[WHITE][last_slider_index[WHITE]++] = sq120i;
+				sliders[WHITE][last_slider_index[WHITE]++] = sq120i; break;
 			case bK:
-				contact[BLACK][0] = sq120i;
+				contact[BLACK][0] = sq120i; break;
 			case wK:
-				contact[WHITE][0] = sq120i;
+				contact[WHITE][0] = sq120i; break;
 		}
 	}
-	ASSERT(bs -> board[contact[BLACK][0]] = bK);
-	ASSERT(bs -> board[contact[WHITE][0]] = wK);
+	ASSERT(bs -> board[contact[BLACK][0]] == bK);
+	ASSERT(bs -> board[contact[WHITE][0]] == wK);
 }
 
 void gen_legal_moves(BOARD_STATE *bs){
+	int *b = bs -> board;
 	SIDE side = bs -> stm;
 	int ksq = contact[side][0];
 	// pintest
@@ -189,10 +196,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(opp_slider_sq == EMPTY) continue;
 		// check if this piece can attack our king square
 		int vector = increment_vector[opp_slider_sq - ksq];
-		// TODO: now I need some way of encoding the piece type
-		// to get board[i] -> attack_type in O(1)
-		if(attack_type[opp_slider_sq - ksq] & TODO[opp_slider_sq] & A_DISTANT){
-			printf("slider aimed at king\n");
+		if(attack_type[opp_slider_sq - ksq] & attack_map[b[opp_slider_sq]] & A_DISTANT){
+			printf("slider aimed at king: %s\n", get_algebraic(opp_slider_sq));
 		}
 	}
 	return;
@@ -200,7 +205,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
+	char testFEN1[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
+	char testFEN[] = "rnbqk1nr/pppppppp/8/b7/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -208,6 +214,7 @@ void main(){
 	init_vectors();
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
+	gen_legal_moves(bs);
 }
 
 // UTILS BELOW main
@@ -267,11 +274,21 @@ int frToSq64(int file, int rank){
 	return 8 * (rank - 1) + (file - 1);
 }
 
+char *get_algebraic(int sq120){
+	int sq64 = sq120to64(sq120);
+	char *sqAN = malloc(3 * sizeof(char));
+	sqAN[0] = (sq64 % 8) + 'a';
+	sqAN[1] = (sq64 - sq64 % 8) / 8 + '1';
+	sqAN[2] = '\0';
+	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-'; *p++ = '\0'; }
+	return sqAN;
+}
+
 // copy algebraic notation of sq120 into sqStrPtr
 void getAlgebraic(char *sqStrPtr, int sq120){
 	int sq64 = sq120to64(sq120);
 	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};
-	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-' ; *p++ = '\0'; }
+	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-'; *p++ = '\0'; }
 	strcpy(sqStrPtr, sqAN);
 }
 
@@ -357,6 +374,7 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 				exit(1);
 		}
 
+		// TODO: stick to one ordering of black and white
 		if(piece == wK)
 			contact[WHITE][0] = sq64to120(frToSq64(file, rank));
 		if(piece == bK)
