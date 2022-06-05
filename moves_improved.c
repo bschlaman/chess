@@ -149,9 +149,9 @@ void init_pieces(BOARD_STATE *bs){
 	ASSERT(last_contact_index[WHITE] == 1);
 	ASSERT(last_pawn_index[BLACK] == 0);
 	ASSERT(last_pawn_index[WHITE] == 0);
-	// initialize pieces from board or board from pieces?
 	for(int i = 0 ; i < BOARD_SIZE ; i++){
 		int sq120i = sq64to120(i);
+		// TODO: I could add breaks here but I don't need to optomize this function
 		switch(bs -> board[sq120i]){
 			case bP:
 				pawns[BLACK][last_pawn_index[BLACK]++] = sq120i;
@@ -189,7 +189,9 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(opp_slider_sq == EMPTY) continue;
 		// check if this piece can attack our king square
 		int vector = increment_vector[opp_slider_sq - ksq];
-		if(attack_type[opp_slider_sq - ksq] & attack_type[opp_slider_sq] & A_DISTANT){
+		// TODO: now I need some way of encoding the piece type
+		// to get board[i] -> attack_type in O(1)
+		if(attack_type[opp_slider_sq - ksq] & TODO[opp_slider_sq] & A_DISTANT){
 			printf("slider aimed at king\n");
 		}
 	}
