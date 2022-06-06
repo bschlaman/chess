@@ -116,4 +116,15 @@ int main(){
 		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
+	puts("");
+	puts("");
+
+	int a[] = {1,2,3,4,5,6,7,6,5,4,3};
+	int *p = &a;
+	int *target = &a[8];
+
+	while(p != target){
+		printf("%d %d \n", *p, *target);
+		p++;
+	}
 }

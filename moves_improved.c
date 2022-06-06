@@ -21,6 +21,7 @@ if(!(n)){ \
 #define BOARD_TO_VBOARD_OFFSET 21
 #define MAX_VBOARD_DISTANCE 77
 
+// TODO: test if movegen works if these two are flipped
 typedef enum { WHITE, BLACK } SIDE;
 enum {
 	OFFBOARD, EMPTY,
@@ -46,6 +47,8 @@ int sq120to64(int sq120);
 int frToSq64(int file, int rank);
 void print_board(BOARD_STATE *bs, int opt);
 char *get_algebraic(int sq120);
+SIDE getColor(int piece);
+bool on2ndRank(int sq, bool color);
 
 // elemental attack types
 enum {
@@ -100,6 +103,15 @@ const int attack_map[] = {
 // print_board opts
 enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
 
+enum {
+	CHECK_RAY     = 1,
+	CHECK_CONTACT = 2,
+	CHECK_KNIGHT  = 4,
+};
+
+// random primes; making sure my logic doesn't rely on these enums being 0
+#define CAPTURED 17
+#define PINNED   23
 int
 	sliders[2][BOARD_SIZE],
 	contact[2][BOARD_SIZE],
@@ -185,21 +197,112 @@ void init_pieces(BOARD_STATE *bs){
 	ASSERT(bs -> board[contact[WHITE][0]] == wK);
 }
 
+void create_move(int from, int to, int piece){
+	printf(BLU "MOVE" reset "%c: %s -> %s",
+		pieceChar[piece],
+		get_algebraic(from),
+		get_algebraic(to)
+	);
+}
+
 void gen_legal_moves(BOARD_STATE *bs){
 	int *b = bs -> board;
 	SIDE side = bs -> stm;
 	int ksq = contact[side][0];
-	// pintest
+	int check = 0, check_vector, opp_checker_sq;
+	int csq;
+
+	// TODO: im trying out pointers here over indexes
+	// decide if i want to switch later
+	int pin_pieces[8], pin_sqs[8];
+	int pin_idx = 0;
+
+	// pintest and distant check test
 	for(int i = 0; i <= last_slider_index[!side]; i++){
 		int opp_slider_sq = sliders[!side][i];
-		// should i use a new flag like "CAPTURED"?
-		if(opp_slider_sq == EMPTY) continue;
+		if(opp_slider_sq == CAPTURED) continue;
 		// check if this piece can attack our king square
 		int vector = increment_vector[opp_slider_sq - ksq];
 		if(attack_type[opp_slider_sq - ksq] & attack_map[b[opp_slider_sq]] & A_DISTANT){
+			// opponent slider is aimed at king
 			printf("slider aimed at king: %s\n", get_algebraic(opp_slider_sq));
+			int sq_offset = ksq;
+			int piece;
+			while((piece = b[sq_offset+=vector]) == EMPTY);
+			if(sq_offset == opp_slider_sq){
+				check |= CHECK_RAY;
+				check_vector = vector;
+				opp_checker_sq = opp_slider_sq;
+			} else if(getColor(piece) == side){
+				// note: we dont know if its actually pinned yet
+				int pin_sq = sq_offset;
+				while(b[sq_offset+=vector] == EMPTY);
+				if(sq_offset == opp_slider_sq){
+					// pinned at pin_sq
+					// running into a problem here.  I need to know
+					// which of our pieces to mark as pinned
+					// can i just mark the board with a special marker?
+					// avoid duplicate arrays with a pin struct?
+					pin_pieces[pin_idx] = piece;
+					pin_sqs[pin_idx++] = pin_sq;
+					b[pin_sq] = PINNED;
+					if(piece == wP || piece == bP){
+						int fwd = side == WHITE ? TUP : TDN;
+						csq = pin_sq + fwd;
+						if(vector == TUP || vector == TDN){
+							if(b[csq] == EMPTY){
+								// push pawn 1 sq
+								create_move(pin_sq, csq, piece);
+								// push pawn 2 sq
+								if(on2ndRank(pin_sq, side) && b[csq+=fwd] == EMPTY)
+									create_move(pin_sq, csq, piece);
+							}
+						} else {
+							// diagonal pawn pin
+							if(csq + TLF == opp_slider_sq)
+								create_move(pin_sq, csq + TLF, piece);
+							if(csq + TRT == opp_slider_sq)
+								create_move(pin_sq, csq + TRT, piece);
+						}
+					} else if(attack_map[piece] & attack_map[b[opp_slider_sq]]){
+						// slider moves along pin vector
+						csq = pin_sq;
+						while((csq+=vector) != opp_slider_sq)
+							create_move(pin_sq, csq, piece);
+						csq = pin_sq;
+						while((csq-=vector) != ksq)
+							create_move(pin_sq, csq, piece);
+					}
+				}
+			}
+		}
+	} // done with pintest & distant check test
+	// check for contact check by knight
+	// TODO: is accessing the array a lot expensive?
+	// csq = contact[!side][i] at beginning of for loop?
+	for(int i = 1; i <= last_contact_index[!side]; i++){
+		csq = contact[!side][i];
+		if(csq == CAPTURED) continue;
+		if(attack_type[csq - ksq] & A_KNIGHT){
+			check |= CHECK_KNIGHT;
+			opp_checker_sq = csq;
+			check_vector = increment_vector[csq - ksq];
+			goto after_checks;
 		}
 	}
+	// check for contact check by other
+	for(int i = 0; i < numDirections[KING]; i++){
+		csq = ksq + translation[KING][i];
+		if(csq == EMPTY || getColor(b[csq]) == side) continue;
+		if(attack_type[csq - ksq] & attack_map[b[csq]]){
+			check |= CHECK_CONTACT;
+			opp_checker_sq = csq;
+			check_vector = increment_vector[csq - ksq];
+			goto after_checks;
+		}
+	}
+	after_checks:
+
 	return;
 }
 
@@ -314,7 +417,7 @@ int getType(int piece){
 }
 
 // TODO: this is risky for EMPTY squares
-bool getColor(int piece){
+SIDE getColor(int piece){
 	return piece >= bP && piece <= bK;
 }
 

@@ -102,9 +102,10 @@ genLegalMoves:
 - Avoid accessing memory like `bs -> board`; this is expensive due to potential cache misses
 - Avoid branching
 #### genLegalMoves improvements
-- Don't scan through the board looking for pieces on legal move generation.  Instead scan through a piece list
+- Don't scan through the board looking for pieces on legal move generation.  Instead use a hybrid piece list and board approach
 - In the pieces array, keep track of sliders and knights sepparately for pintests
 - I can't find any online resources that claim a performance hit when declaring variables inside loops.  Until I'm proven otherwise, I should declare variables as locally as possible.
+- Find a better way to encode color into the pieces; i.e. improve highly used function `getColor`.
 #### makeMove improvements
 #### undoMove improvements
 
