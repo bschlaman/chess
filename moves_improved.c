@@ -29,7 +29,7 @@ enum {
 	wP, wN, wB, wR, wQ, wK,
 	bP, bN, bB, bR, bQ, bK,
 };
-enum { KNIGHT, BISHOP, ROOK, QUEEN, KING } PIECE_TYPE;
+enum { KNIGHT, BISHOP, ROOK, QUEEN, KING, PAWN, NONETYPE } PIECE_TYPE;
 // 0 0 0 0
 enum { WKCA = 8, WQCA = 4, BKCA = 2, BQCA = 1 };
 
@@ -105,6 +105,11 @@ const int color_map[] = {
 	NEITHER, NEITHER,
 	WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
 	BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+};
+const PIECE_TYPE type_map[] = {
+	NULL, NULL,
+	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
+	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 };
 
 // print_board opts
@@ -295,8 +300,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 		}
 	} // done with pintest & distant check test
 	// check for contact check by knight
-	// TODO: is accessing the array a lot expensive?
-	// csq = contact[!side][i] at beginning of for loop?
+	// TODO: this could be expensive - can we infer this from previous move?
 	for(int i = 1; i <= last_contact_index[!side]; i++){
 		csq = contact[!side][i];
 		if(csq == CAPTURED) continue;
@@ -355,10 +359,85 @@ void gen_legal_moves(BOARD_STATE *bs){
 	if(check & CHECK_KING_ROSE){
 		// can only move the king or capture the checker
 		// pawn capture
-		// knight capture
-		// other capture
-		// move king
-
+		piece = side == WHITE ? wP : bP;
+		if(b[opp_checker_sq - fwd + TLF] == piece)
+			create_move(opp_checker_sq - fwd + TLF, opp_checker_sq, piece);
+		if(b[opp_checker_sq - fwd + TRT] == piece)
+			create_move(opp_checker_sq - fwd + TRT, opp_checker_sq, piece);
+		// knight capture; look through side's knights
+		for(int i = 1; i <= last_contact_index[side]; i++){
+			csq = contact[side][i];
+			if(csq == CAPTURED) continue;
+			if(attack_type[csq - opp_checker_sq] & A_KNIGHT)
+				create_move(csq, opp_checker_sq, b[csq]);
+		}
+		// TODO: this is a bit sloppy (redeclaring vector, accessing slider a lot)
+		for(int i = 1; i <= last_slider_index[side]; i++){
+			csq = slider[side][i];
+			if(csq == CAPTURED) continue;
+			if(attack_type[csq - opp_checker_sq] & attack_map[b[csq]]){
+				int vector = increment_vector[csq - opp_checker_sq];
+				while((csq+=vector) == EMPTY);
+				if(csq == opp_checker_sq)
+					create_move(slider[side][i], opp_checker_sq, b[slider[side][i]]);
+			}
+		}
+		// slider capture; look through side's slider pieces
+		// move king: after below else clause
+	} else {
+		// non-check moves
+		// pawns
+		// TODO: promotions
+		for(int i = 0; i <= last_pawn_index[side]; i++){
+			int pawn_sq = pawns[side][i];
+			// TODO: do I check for pins here? i.e. b[pawn_sq] == PINNED
+			if(pawn_sq == CAPTURED) continue;
+			// captures
+			csq = pawn_sq + fwd + TLF;
+			if(color_map[b[csq]] == !side)
+				create_move(pawn_sq, csq, b[pawn_sq]);
+			csq = pawn_sq + fwd + TRT;
+			if(color_map[b[csq]] == !side)
+				create_move(pawn_sq, csq, b[pawn_sq]);
+			// pushes
+			csq = pawn_sq + fwd;
+			if(csq == EMPTY){
+				create_move(pawn_sq, csq, b[pawn_sq]);
+				if(on2ndRank(pawn_sq, side) && b[csq+=fwd] == EMPTY)
+					create_move(pawn_sq, csq, b[pawn_sq]);
+			}
+		}
+		// knights
+		for(int i = 1; i <= last_contact_index[side]; i++){
+			int knight_sq = contact[side][i];
+			if(knight_sq == CAPTURED) continue;
+			for(int d = 0; d < numDirections[KNIGT]; d++){
+				csq = knight_sq + translation[KNIGHT][d];
+				if(csq == OFFBOARD || color_map[b[csq]] == side) continue;
+				create_move(knight_sq, csq, b[knight_sq]);
+			}
+		}
+		// sliders
+		for(int i = 0; i <= last_slider_index[side]; i++){
+			int slider_sq = slider[side][i];
+			piece = b[slider_sq];
+			if(slider_sq == CAPTURED) continue;
+			PIECE_TYPE type = type_map[piece];
+			for(int d = 0; d < numDirections[type]; d++){
+				csq = slider_sq;
+				// TODO: translation array accessed many times... vector = translation...?
+				while((csq+=translation[type][d]) == EMPTY){
+					create_move(slider_sq, csq, piece);
+				}
+			}
+		}
+		if(check & CHECK_RAY){
+			// remove moves that dont block or capture a distant check
+			// if move.to is not on the check ray, remove it
+			// if it is on the check ray. make sure it is in between
+			// checker and king (including opp_checker_sq itself (capture))
+			puts("");
+		}
 	}
 	KING_MOVES:
 }
