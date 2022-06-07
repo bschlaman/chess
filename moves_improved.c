@@ -20,9 +20,10 @@ if(!(n)){ \
 #define VBOARD_SIZE 120
 #define BOARD_TO_VBOARD_OFFSET 21
 #define MAX_VBOARD_DISTANCE 77
+#define BLACK_RANK_OFFSET 70
 
 // TODO: test if movegen works if these two are flipped
-typedef enum { WHITE, BLACK } SIDE;
+typedef enum { WHITE, BLACK, NEITHER } SIDE;
 enum {
 	OFFBOARD, EMPTY,
 	wP, wN, wB, wR, wQ, wK,
@@ -98,6 +99,12 @@ const int attack_map[] = {
 	0, 0,
 	A_WPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
 	A_BPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
+};
+// TODO: check if I ever actually use this; delete if not
+const int color_map[] = {
+	NEITHER, NEITHER,
+	WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+	BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
 };
 
 // print_board opts
@@ -319,9 +326,41 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(check & CHECK_RAY & CHECK_KNIGHT) goto KING_MOVES;
 		// checker is a pawn capturable en passant
 		if(opp_checker_sq == ep_sq - fwd) goto EP_MOVES;
+	} else {
+		// castling
+		// TODO: castling through check
+		int cperm = bs -> castlePermission;
+		int k_perm = side == WHITE ? WKKA : BKKA;
+		int q_perm = side == WHITE ? WQKA : BQKA;
+		int rank_offset = side == WHITE ? 0 : BLACK_RANK_OFFSET;
+		if(cperm & k_perm \
+			&& b[F1+rank_offset] == EMPTY \
+			&& b[G1+rank_offset] == EMPTY){
+			create_move(ksq, ksq + TRT + TRT, b[ksq]);
+		}
+		if(cperm & q_perm \
+			&& b[B1+rank_offset] == EMPTY \
+			&& b[C1+rank_offset] == EMPTY \
+			&& b[D1+rank_offset] == EMPTY){
+			create_move(ksq, ksq + TLF + TLF, b[ksq]);
+		}
 	}
+	EP_MOVES:
+	piece = side == WHITE ? wP : bP;
+	if(b[ep_sq - fwd + TLF] == piece)
+		create_move(ep_sq - fwd + TLF, ep_sq, piece);
+	if(b[ep_sq - fwd + TRT] == piece)
+		create_move(ep_sq - fwd + TRT, ep_sq, piece);
+	NORMAL_MOVES:
+	if(check & CHECK_KING_ROSE){
+		// can only move the king or capture the checker
+		// pawn capture
+		// knight capture
+		// other capture
+		// move king
 
-	return;
+	}
+	KING_MOVES:
 }
 
 void main(){

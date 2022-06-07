@@ -120,4 +120,5 @@ int main(){
 	puts("");
 
 	printf("%d\n", __builtin_popcount(345));
+	printf("%d\n", 3 == 3 == 3);
 }
