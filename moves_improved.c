@@ -29,7 +29,7 @@ enum {
 	wP, wN, wB, wR, wQ, wK,
 	bP, bN, bB, bR, bQ, bK,
 };
-enum { KNIGHT, BISHOP, ROOK, QUEEN, KING, PAWN, NONETYPE } PIECE_TYPE;
+typedef enum { KNIGHT, BISHOP, ROOK, QUEEN, KING, PAWN, NONETYPE } PIECE_TYPE;
 // 0 0 0 0
 enum { WKCA = 8, WQCA = 4, BKCA = 2, BQCA = 1 };
 
@@ -37,7 +37,7 @@ typedef struct {
 	int board[VBOARD_SIZE];
 	int ply;
 	SIDE stm;
-	int enPas;
+	int ep_sq;
 	int castlePermission;
 } BOARD_STATE;
 
@@ -107,7 +107,7 @@ const int color_map[] = {
 	BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
 };
 const PIECE_TYPE type_map[] = {
-	NULL, NULL,
+	NONETYPE, NONETYPE,
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 };
@@ -218,7 +218,7 @@ void init_pieces(BOARD_STATE *bs){
 void create_move(int from, int to, int piece){
 	MOVE move = from < 10 | to < 4 | piece;
 	move_stack[move_stack_idx++] = move;
-	printf(BLU "MOVE" reset "%c: %s -> %s",
+	printf(BLU "MOVE " reset "%c: %s -> %s\n",
 		pieceChar[piece],
 		get_algebraic(from),
 		get_algebraic(to)
@@ -232,7 +232,10 @@ void gen_legal_moves(BOARD_STATE *bs){
 	int ksq = contact[side][0];
 	int start_move_stack_idx = move_stack_idx;
 	int check = 0, check_vector, opp_checker_sq;
+
+	int fwd = side == WHITE ? TUP : TDN;
 	int csq;
+	int piece;
 
 	// TODO: im trying out pointers here over indexes
 	// decide if i want to switch later
@@ -249,7 +252,6 @@ void gen_legal_moves(BOARD_STATE *bs){
 			// opponent slider is aimed at king
 			printf("slider aimed at king: %s\n", get_algebraic(opp_slider_sq));
 			int sq_offset = ksq;
-			int piece;
 			while((piece = b[sq_offset+=vector]) == EMPTY);
 			if(sq_offset == opp_slider_sq){
 				check |= CHECK_RAY;
@@ -269,7 +271,6 @@ void gen_legal_moves(BOARD_STATE *bs){
 					pin_sqs[pin_idx++] = pin_sq;
 					b[pin_sq] = PINNED;
 					if(piece == wP || piece == bP){
-						int fwd = side == WHITE ? TUP : TDN;
 						csq = pin_sq + fwd;
 						if(vector == TUP || vector == TDN){
 							if(b[csq] == EMPTY){
@@ -334,8 +335,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// castling
 		// TODO: castling through check
 		int cperm = bs -> castlePermission;
-		int k_perm = side == WHITE ? WKKA : BKKA;
-		int q_perm = side == WHITE ? WQKA : BQKA;
+		int k_perm = side == WHITE ? WKCA : BKCA;
+		int q_perm = side == WHITE ? WQCA : BQCA;
 		int rank_offset = side == WHITE ? 0 : BLACK_RANK_OFFSET;
 		if(cperm & k_perm \
 			&& b[F1+rank_offset] == EMPTY \
@@ -373,13 +374,13 @@ void gen_legal_moves(BOARD_STATE *bs){
 		}
 		// TODO: this is a bit sloppy (redeclaring vector, accessing slider a lot)
 		for(int i = 1; i <= last_slider_index[side]; i++){
-			csq = slider[side][i];
+			csq = sliders[side][i];
 			if(csq == CAPTURED) continue;
 			if(attack_type[csq - opp_checker_sq] & attack_map[b[csq]]){
 				int vector = increment_vector[csq - opp_checker_sq];
 				while((csq+=vector) == EMPTY);
 				if(csq == opp_checker_sq)
-					create_move(slider[side][i], opp_checker_sq, b[slider[side][i]]);
+					create_move(sliders[side][i], opp_checker_sq, b[sliders[side][i]]);
 			}
 		}
 		// slider capture; look through side's slider pieces
@@ -411,7 +412,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 		for(int i = 1; i <= last_contact_index[side]; i++){
 			int knight_sq = contact[side][i];
 			if(knight_sq == CAPTURED) continue;
-			for(int d = 0; d < numDirections[KNIGT]; d++){
+			for(int d = 0; d < numDirections[KNIGHT]; d++){
 				csq = knight_sq + translation[KNIGHT][d];
 				if(csq == OFFBOARD || color_map[b[csq]] == side) continue;
 				create_move(knight_sq, csq, b[knight_sq]);
@@ -419,7 +420,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 		}
 		// sliders
 		for(int i = 0; i <= last_slider_index[side]; i++){
-			int slider_sq = slider[side][i];
+			int slider_sq = sliders[side][i];
 			piece = b[slider_sq];
 			if(slider_sq == CAPTURED) continue;
 			PIECE_TYPE type = type_map[piece];
@@ -652,6 +653,6 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 		rank = fen[1] - '0';
 		ASSERT(file >= 1 && file <= 8);
 		ASSERT(rank >= 1 && rank <= 8);
-		bs -> enPas = sq64to120(frToSq64(file, rank));
+		bs -> ep_sq = sq64to120(frToSq64(file, rank));
 	}
 }
