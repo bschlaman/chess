@@ -105,9 +105,15 @@ enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
 
 enum {
 	CHECK_RAY     = 1,
-	CHECK_CONTACT = 2,
+	CHECK_KING_ROSE = 2,
 	CHECK_KNIGHT  = 4,
 };
+
+// 000000 000000 0000
+// from   to     moveType
+typedef unsigned short MOVE;
+MOVE move_stack[1024];
+int move_stack_idx = 0;
 
 // random primes; making sure my logic doesn't rely on these enums being 0
 #define CAPTURED 17
@@ -198,6 +204,8 @@ void init_pieces(BOARD_STATE *bs){
 }
 
 void create_move(int from, int to, int piece){
+	MOVE move = from < 10 | to < 4 | piece;
+	move_stack[move_stack_idx++] = move;
 	printf(BLU "MOVE" reset "%c: %s -> %s",
 		pieceChar[piece],
 		get_algebraic(from),
@@ -208,7 +216,9 @@ void create_move(int from, int to, int piece){
 void gen_legal_moves(BOARD_STATE *bs){
 	int *b = bs -> board;
 	SIDE side = bs -> stm;
+	int ep_sq = bs -> ep_sq;
 	int ksq = contact[side][0];
+	int start_move_stack_idx = move_stack_idx;
 	int check = 0, check_vector, opp_checker_sq;
 	int csq;
 
@@ -287,7 +297,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			check |= CHECK_KNIGHT;
 			opp_checker_sq = csq;
 			check_vector = increment_vector[csq - ksq];
-			goto after_checks;
+			goto AFTER_CHECKS;
 		}
 	}
 	// check for contact check by other
@@ -295,13 +305,21 @@ void gen_legal_moves(BOARD_STATE *bs){
 		csq = ksq + translation[KING][i];
 		if(csq == EMPTY || getColor(b[csq]) == side) continue;
 		if(attack_type[csq - ksq] & attack_map[b[csq]]){
-			check |= CHECK_CONTACT;
+			check |= CHECK_KING_ROSE;
 			opp_checker_sq = csq;
 			check_vector = increment_vector[csq - ksq];
-			goto after_checks;
+			goto AFTER_CHECKS;
 		}
 	}
-	after_checks:
+	AFTER_CHECKS:
+	if(check){
+		// if in check, ignore pin ray moves
+		move_stack_idx = start_move_stack_idx;
+		// double check
+		if(check & CHECK_RAY & CHECK_KNIGHT) goto KING_MOVES;
+		// checker is a pawn capturable en passant
+		if(opp_checker_sq == ep_sq - fwd) goto EP_MOVES;
+	}
 
 	return;
 }
