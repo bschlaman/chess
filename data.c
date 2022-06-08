@@ -31,7 +31,7 @@ TEST_POSITION tps[] = {
 		.depth = 1,
 		.nodes = 218,
 	},
-	// next 3 positions test en passant pins and check escapes
+	// next 5 positions test en passant pins and check escapes
 	{
 		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
 		.depth = 1,
@@ -46,6 +46,17 @@ TEST_POSITION tps[] = {
 		.fen = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3",
 		.depth = 1,
 		.nodes = 7,
+	},
+	{
+		.fen = "8/B7/8/8/2pP4/8/8/3K2k1 b - d3",
+		.depth = 1,
+		.nodes = 6,
+	},
+	// horizontal en passant pin
+	{
+		.fen = "8/8/8/8/R1pP2k1/8/8/4K3 b - d3",
+		.depth = 1,
+		.nodes = 9,
 	},
 	// white king in check
 	{
@@ -65,12 +76,19 @@ TEST_POSITION tps[] = {
 		.depth = 2,
 		.nodes = 1486,
 	},
-	// KiwiPete position (pos 2 from wiki)
+	// KiwiPete position (pos 2 from wiki) (depth 1)
+	{
+		.fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+		.depth = 1,
+		.nodes = 48,
+	},
+	// KiwiPete position (pos 2 from wiki) (depth 4)
 	{
 		.fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
 		.depth = 4,
 		.nodes = 4085603,
 	},
+	// black king in check; can block and capture attacker
 	{
 		.fen = "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK -",
 		.depth = 1,

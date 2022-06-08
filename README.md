@@ -179,3 +179,19 @@ I've finally hit a reference to `delta_vec` in move generation.  Today's goal is
 
 `capt_code` is simply a mapping of a 2d directional vector to 1d space, where the relationship is a capture enum.
 `delta_vec` is the rayVec concept from [this CPW article](https://www.chessprogramming.org/Vector_Attacks).  It essentially returns the increment given a board vector that should be used when traversing that vector (ray).
+
+#### 07.06.2022
+New Move Generation technique:
+1. Detect pins from opponent pieces and gen inline moves for our pinned pieces.  Set board[pin_sq] = PINNED and add piece to pin stack.
+1. Figure out if we are in check from a slider
+1. Figure out if we are in check from a knight
+1. Figure out if we are in check from a piece next to the king
+1. If in check from anything, throw away the pinned piece moves
+1. If in double check, just do king moves
+1. If checker piece is capturable en passat, try that
+1. If we are not in check, generate castle moves
+1. If we are in check from knight or piece next to king, try and capture it
+1. Else, generate normal moves for pawns, knights, sliders
+1. King moves
+1. If we are in distant check, remove all the moves that dont capture or intercept checker
+1. Replace the pieces in the pinned stack
