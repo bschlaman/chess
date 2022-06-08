@@ -21,6 +21,7 @@ if(!(n)){ \
 #define BOARD_TO_VBOARD_OFFSET 21
 #define MAX_VBOARD_DISTANCE 77
 #define BLACK_RANK_OFFSET 70
+#define MOVE_TO_MASK 0x3FFF
 
 // TODO: test if movegen works if these two are flipped
 typedef enum { WHITE, BLACK, NEITHER } SIDE;
@@ -121,9 +122,9 @@ enum {
 	CHECK_KNIGHT  = 4,
 };
 
-// 000000 000000 0000
-// from   to     moveType
-typedef unsigned short MOVE;
+// 00000000000000 00000000000000 0000
+// from           to             moveType
+typedef unsigned int MOVE;
 MOVE move_stack[1024];
 int move_stack_idx = 0;
 
@@ -135,9 +136,9 @@ int
 	contact[2][BOARD_SIZE],
 	pawns[2][BOARD_SIZE];
 int
-	last_slider_index[2],
-	last_contact_index[2] = {1, 1},
-	last_pawn_index[2];
+	sliders_idx[2],
+	contact_idx[2] = {1, 1},
+	pawns_idx[2];
 
 // used primarily for pintests
 // const int max_distance = H8-A1;
@@ -179,32 +180,32 @@ void init_board(BOARD_STATE *bs){
 }
 
 void init_pieces(BOARD_STATE *bs){
-	ASSERT(last_slider_index[BLACK] == 0);
-	ASSERT(last_slider_index[WHITE] == 0);
-	ASSERT(last_contact_index[BLACK] == 1);
-	ASSERT(last_contact_index[WHITE] == 1);
-	ASSERT(last_pawn_index[BLACK] == 0);
-	ASSERT(last_pawn_index[WHITE] == 0);
+	ASSERT(sliders_idx[BLACK] == 0);
+	ASSERT(sliders_idx[WHITE] == 0);
+	ASSERT(contact_idx[BLACK] == 1);
+	ASSERT(contact_idx[WHITE] == 1);
+	ASSERT(pawns_idx[BLACK] == 0);
+	ASSERT(pawns_idx[WHITE] == 0);
 	for(int i = 0; i < BOARD_SIZE; i++){
 		int sq120i = sq64to120(i);
 		// TODO: I could add breaks here but I don't need to optomize this function
 		switch(bs -> board[sq120i]){
 			case bP:
-				pawns[BLACK][last_pawn_index[BLACK]++] = sq120i; break;
+				pawns[BLACK][pawns_idx[BLACK]++] = sq120i; break;
 			case wP:
-				pawns[WHITE][last_pawn_index[WHITE]++] = sq120i; break;
+				pawns[WHITE][pawns_idx[WHITE]++] = sq120i; break;
 			case bN:
-				contact[BLACK][last_contact_index[BLACK]++] = sq120i; break;
+				contact[BLACK][contact_idx[BLACK]++] = sq120i; break;
 			case wN:
-				contact[WHITE][last_contact_index[WHITE]++] = sq120i; break;
+				contact[WHITE][contact_idx[WHITE]++] = sq120i; break;
 			case bB:
 			case bR:
 			case bQ:
-				sliders[BLACK][last_slider_index[BLACK]++] = sq120i; break;
+				sliders[BLACK][sliders_idx[BLACK]++] = sq120i; break;
 			case wB:
 			case wR:
 			case wQ:
-				sliders[WHITE][last_slider_index[WHITE]++] = sq120i; break;
+				sliders[WHITE][sliders_idx[WHITE]++] = sq120i; break;
 			case bK:
 				contact[BLACK][0] = sq120i; break;
 			case wK:
@@ -215,14 +216,23 @@ void init_pieces(BOARD_STATE *bs){
 	ASSERT(bs -> board[contact[WHITE][0]] == wK);
 }
 
+void print_move_stack(BOARD_STATE *bs){
+	for(int i = 0; i < move_stack_idx; i++){
+		int from = move_stack[i] >> 18;
+		int to = (move_stack[i] >> 4) & MOVE_TO_MASK;
+		printf(BLU "MOVE " reset "%c: %s -> %s (%d)\n",
+			pieceChar[bs -> board[from]],
+			get_algebraic(from),
+			get_algebraic(to),
+			to
+		);
+	}
+	printf(YEL "total moves:" reset " %d\n", move_stack_idx);
+}
+
 void create_move(int from, int to, int piece){
-	MOVE move = from < 10 | to < 4 | piece;
+	MOVE move = from << 18 | to << 4;
 	move_stack[move_stack_idx++] = move;
-	printf(BLU "MOVE " reset "%c: %s -> %s\n",
-		pieceChar[piece],
-		get_algebraic(from),
-		get_algebraic(to)
-	);
 }
 
 void gen_legal_moves(BOARD_STATE *bs){
@@ -243,7 +253,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 	int pin_idx = 0;
 
 	// pintest and distant check test
-	for(int i = 0; i <= last_slider_index[!side]; i++){
+	for(int i = 0; i < sliders_idx[!side]; i++){
 		int opp_slider_sq = sliders[!side][i];
 		if(opp_slider_sq == CAPTURED) continue;
 		// check if this piece can attack our king square
@@ -251,24 +261,26 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(attack_type[opp_slider_sq - ksq] & attack_map[b[opp_slider_sq]] & A_DISTANT){
 			// opponent slider is aimed at king
 			printf("slider aimed at king: %s\n", get_algebraic(opp_slider_sq));
+			// TODO: use a different name than sq_offset
 			int sq_offset = ksq;
 			while((piece = b[sq_offset+=vector]) == EMPTY);
 			if(sq_offset == opp_slider_sq){
 				check |= CHECK_RAY;
 				check_vector = vector;
 				opp_checker_sq = opp_slider_sq;
-			} else if(getColor(piece) == side){
+			} else if(color_map[piece] == side){
 				// note: we dont know if its actually pinned yet
 				int pin_sq = sq_offset;
 				while(b[sq_offset+=vector] == EMPTY);
 				if(sq_offset == opp_slider_sq){
 					// pinned at pin_sq
-					// running into a problem here.  I need to know
-					// which of our pieces to mark as pinned
-					// can i just mark the board with a special marker?
 					// avoid duplicate arrays with a pin struct?
 					pin_pieces[pin_idx] = piece;
 					pin_sqs[pin_idx++] = pin_sq;
+					// running into a problem here.  I need to know
+					// which of our pieces to mark as pinned
+					// can i just mark the board with a special marker?
+					// TODO 1: this is not ideal - I don't want to touch the board array
 					b[pin_sq] = PINNED;
 					if(piece == wP || piece == bP){
 						csq = pin_sq + fwd;
@@ -302,7 +314,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 	} // done with pintest & distant check test
 	// check for contact check by knight
 	// TODO: this could be expensive - can we infer this from previous move?
-	for(int i = 1; i <= last_contact_index[!side]; i++){
+	for(int i = 1; i < contact_idx[!side]; i++){
 		csq = contact[!side][i];
 		if(csq == CAPTURED) continue;
 		if(attack_type[csq - ksq] & A_KNIGHT){
@@ -366,14 +378,14 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(b[opp_checker_sq - fwd + TRT] == piece)
 			create_move(opp_checker_sq - fwd + TRT, opp_checker_sq, piece);
 		// knight capture; look through side's knights
-		for(int i = 1; i <= last_contact_index[side]; i++){
+		for(int i = 1; i < contact_idx[side]; i++){
 			csq = contact[side][i];
 			if(csq == CAPTURED) continue;
 			if(attack_type[csq - opp_checker_sq] & A_KNIGHT)
 				create_move(csq, opp_checker_sq, b[csq]);
 		}
 		// TODO: this is a bit sloppy (redeclaring vector, accessing slider a lot)
-		for(int i = 1; i <= last_slider_index[side]; i++){
+		for(int i = 1; i < sliders_idx[side]; i++){
 			csq = sliders[side][i];
 			if(csq == CAPTURED) continue;
 			if(attack_type[csq - opp_checker_sq] & attack_map[b[csq]]){
@@ -389,37 +401,38 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// non-check moves
 		// pawns
 		// TODO: promotions
-		for(int i = 0; i <= last_pawn_index[side]; i++){
+		for(int i = 0; i < pawns_idx[side]; i++){
 			int pawn_sq = pawns[side][i];
-			// TODO: do I check for pins here? i.e. b[pawn_sq] == PINNED
-			if(pawn_sq == CAPTURED) continue;
+			// TODO 1: do I check for pins here? i.e. b[pawn_sq] == PINNED
+			if(pawn_sq == CAPTURED || b[pawn_sq] == PINNED) continue;
 			// captures
 			csq = pawn_sq + fwd + TLF;
-			if(color_map[b[csq]] == !side)
+			if(b[csq] != OFFBOARD && color_map[b[csq]] == !side)
 				create_move(pawn_sq, csq, b[pawn_sq]);
 			csq = pawn_sq + fwd + TRT;
-			if(color_map[b[csq]] == !side)
+			if(b[csq] != OFFBOARD && color_map[b[csq]] == !side)
 				create_move(pawn_sq, csq, b[pawn_sq]);
 			// pushes
 			csq = pawn_sq + fwd;
-			if(csq == EMPTY){
+			if(b[csq] == EMPTY){
 				create_move(pawn_sq, csq, b[pawn_sq]);
 				if(on2ndRank(pawn_sq, side) && b[csq+=fwd] == EMPTY)
 					create_move(pawn_sq, csq, b[pawn_sq]);
 			}
 		}
 		// knights
-		for(int i = 1; i <= last_contact_index[side]; i++){
+		for(int i = 1; i < contact_idx[side]; i++){
 			int knight_sq = contact[side][i];
 			if(knight_sq == CAPTURED) continue;
 			for(int d = 0; d < numDirections[KNIGHT]; d++){
 				csq = knight_sq + translation[KNIGHT][d];
-				if(csq == OFFBOARD || color_map[b[csq]] == side) continue;
+				// TODO 1: now we have to check for pin here which seems clunky
+				if(b[csq] == OFFBOARD || color_map[b[csq]] == side || b[csq] == PINNED) continue;
 				create_move(knight_sq, csq, b[knight_sq]);
 			}
 		}
 		// sliders
-		for(int i = 0; i <= last_slider_index[side]; i++){
+		for(int i = 0; i < sliders_idx[side]; i++){
 			int slider_sq = sliders[side][i];
 			piece = b[slider_sq];
 			if(slider_sq == CAPTURED) continue;
@@ -427,7 +440,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			for(int d = 0; d < numDirections[type]; d++){
 				csq = slider_sq;
 				// TODO: translation array accessed many times... vector = translation...?
-				while((csq+=translation[type][d]) == EMPTY){
+				while(b[csq+=translation[type][d]] == EMPTY){
 					create_move(slider_sq, csq, piece);
 				}
 			}
@@ -437,16 +450,41 @@ void gen_legal_moves(BOARD_STATE *bs){
 			// if move.to is not on the check ray, remove it
 			// if it is on the check ray. make sure it is in between
 			// checker and king (including opp_checker_sq itself (capture))
-			puts("");
+			for(int i = start_move_stack_idx; i < move_stack_idx; i++){
+				int to = (move_stack[i] >> 4) & MOVE_TO_MASK;
+				int vector = increment_vector[to - ksq];
+				// need to make sure that the vector is the same as check_vector
+				// since all vectors of non-slider accessible square parings are all 0
+				// i.e. comparing increment_vector[opp_checker_sq - to]
+				// and increment_vector[to - ksq] does not work until
+				// we are sure that vector == check_vector
+				if(vector != check_vector){
+					move_stack[i--] = move_stack[--move_stack_idx];
+				} else {
+					if(to == opp_checker_sq) continue; // capture
+					if(increment_vector[opp_checker_sq - to] == vector) continue; // block
+					move_stack[i--] = move_stack[--move_stack_idx];
+				}
+			}
 		}
 	}
 	KING_MOVES:
+	for(int i = 0; i < numDirections[KING]; i++){
+		csq = ksq + translation[KING][i];
+		if(b[csq] == OFFBOARD || color_map[b[csq]] == side || b[csq] == PINNED) continue;
+		create_move(ksq, csq, b[ksq]);
+	}
+	while(pin_idx > 0){
+		b[pin_sqs[pin_idx]] = pin_pieces[pin_idx];
+		pin_idx--;
+	}
 }
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	char testFEN1[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
-	char testFEN[] = "rnbqk1nr/pppppppp/8/b7/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+	char testFEN2[] = "rnbqk1nr/pppppppp/8/b7/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+	char testFEN[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -455,6 +493,7 @@ void main(){
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
 	gen_legal_moves(bs);
+	print_move_stack(bs);
 }
 
 // UTILS BELOW main

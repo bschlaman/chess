@@ -119,6 +119,7 @@ int main(){
 	puts("");
 	puts("");
 
-	printf("%d\n", __builtin_popcount(345));
-	printf("%d\n", 3 == 3 == 3);
+	printf("%d\n", sizeof(unsigned short));
+	printf("%d\n", sizeof(unsigned int));
+	printf("%d\n", sizeof(unsigned char));
 }
