@@ -22,6 +22,11 @@ if(!(n)){ \
 #define MAX_VBOARD_DISTANCE 77
 #define BLACK_RANK_OFFSET 70
 #define MOVE_TO_MASK 0x3FFF
+#define MOVE_FLAG_MASK 0x0F
+#define MOVE_FLAG_NUM_BITS 4
+#define MOVE_TO_NUM_BITS 14
+#define MOVE_FROM_OFFSET 18
+#define MAX_PLY 1000
 
 // TODO: test if movegen works if these two are flipped
 typedef enum { WHITE, BLACK, NEITHER } SIDE;
@@ -53,8 +58,8 @@ SIDE getColor(int piece);
 bool on2ndRank(int sq, bool color);
 bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SIDE side);
 
-// elemental attack types
 enum {
+	// elemental attack types
 	A_CONTACT_FORW      = 0x01,
 	A_CONTACT_BCKW      = 0x02,
 	A_CONTACT_FORW_DIAG = 0x04,
@@ -102,7 +107,6 @@ const int attack_map[] = {
 	A_WPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
 	A_BPAWN, A_KNIGHT, A_BISHOP, A_ROOK, A_QUEEN, A_KING,
 };
-// TODO: check if I ever actually use this; delete if not
 const int color_map[] = {
 	NEITHER, NEITHER,
 	WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
@@ -113,6 +117,28 @@ const PIECE_TYPE type_map[] = {
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 };
+
+// TODO: create a better system for this
+enum {
+	M_PROMOTION = 8,
+	M_CAPTURE   = 4,
+	M_BIT2      = 2,
+	M_BIT1      = 1,
+
+	M_QUIET        = 0,
+	M_CSTL_KING    = M_BIT1,
+	M_CSTL_QUEEN   = M_BIT1 | M_BIT2,
+	M_CAPTURE      = M_CAPTURE,
+	M_CAPT_EP      = M_CAPTURE | M_BIT1,
+	M_PROMO_N      = M_PROMOTION,
+	M_PROMO_B      = M_PROMOTION | M_BIT1,
+	M_PROMO_R      = M_PROMOTION | M_BIT2,
+	M_PROMO_Q      = M_PROMOTION | M_BIT1 | M_BIT2,
+	M_CAPT_PROMO_N = M_PROMOTION | M_CAPTURE,
+	M_CAPT_PROMO_B = M_PROMOTION | M_CAPTURE | M_BIT1,
+	M_CAPT_PROMO_R = M_PROMOTION | M_CAPTURE | M_BIT2,
+	M_CAPT_PROMO_Q = M_PROMOTION | M_CAPTURE | M_BIT1 | M_BIT2,
+} MOVE_TYPE;
 
 // print_board opts
 enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
@@ -126,8 +152,18 @@ enum {
 // 00000000000000 00000000000000 0000
 // from           to             moveType
 typedef unsigned int MOVE;
-MOVE move_stack[1024];
+MOVE move_stack[MAX_PLY];
 int move_stack_idx = 0;
+
+// NOTE: official chess rules has a different definition of "irreversible"
+// "irreversible" moves reset the halfmove clock (50 move rule)
+// captures and pawn moves only; castling does not count
+typedef struct {
+	int ep_sq;
+	int castle_perms;
+	int captured_piece;
+} MOVE_IRREV;
+MOVE_IRREV move_stack_irrev[MAX_PLY];
 
 // random primes; making sure my logic doesn't rely on these enums being 0
 #define CAPTURED 17
@@ -223,8 +259,8 @@ void init_pieces(BOARD_STATE *bs){
 
 void print_move_stack(BOARD_STATE *bs){
 	for(int i = 0; i < move_stack_idx; i++){
-		int from = move_stack[i] >> 18;
-		int to = (move_stack[i] >> 4) & MOVE_TO_MASK;
+		int from = move_stack[i] >> MOVE_FROM_OFFSET;
+		int to = (move_stack[i] >> MOVE_FLAG_NUM_BITS) & MOVE_TO_MASK;
 		printf(BLU "MOVE " reset "%c: %s -> %s\n",
 			pieceChar[bs -> board[from]],
 			get_algebraic(from),
@@ -235,8 +271,8 @@ void print_move_stack(BOARD_STATE *bs){
 	printf(YEL "total moves:" reset " %d\n", move_stack_idx);
 }
 
-void create_move(int from, int to, int piece){
-	MOVE move = from << 18 | to << 4;
+void create_move(int from, int to, MOVE_TYPE mtype){
+	MOVE move = from << MOVE_FROM_OFFSET | to << MOVE_FLAG_NUM_BITS;
 	move_stack[move_stack_idx++] = move;
 }
 
@@ -522,6 +558,37 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SID
 		}
 	}
 	return false;
+}
+
+void make_move(BOARD_STATE *bs, MOVE move){
+	int move_flag = move & MOVE_FLAG_MASK;
+	int to = (move >> MOVE_FLAG_NUM_BITS) & MOVE_TO_MASK;
+	int from = move >> MOVE_FROM_OFFSET;
+
+	int *b = bs -> board;
+	SIDE side = bs -> stm;
+	int fwd = side == WHITE ? TUP : TDN;
+	int captured_piece = move_flag == M_CAPT_EP ? b[to - fwd] : b[to];
+	int piece = b[from];
+
+	// TODO: is there a better way?  also, can I do move_stack this way?
+	// 1) save irreversible aspects of the move
+	MOVE_IRREV *mi = move_stack_irrev[bs -> ply];
+	mi -> ep_sq = bs -> ep_sq;
+	mi -> castle_perms = bs -> castlePermission;
+	mi -> captured_piece = captured_piece;
+
+	// 2) increment ply
+	bs -> ply++;
+
+	// 3) update the board and piece lists
+	b[to] = b[from];
+	b[from] = EMPTY;
+	// special cases
+
+}
+void undo_move(){
+	puts("");
 }
 
 void main(){
