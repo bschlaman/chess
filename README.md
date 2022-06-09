@@ -195,3 +195,11 @@ New Move Generation technique:
 1. King moves
 1. If we are in distant check, remove all the moves that dont capture or intercept checker
 1. Replace the pieces in the pinned stack
+
+#### 08.06.2022
+I am beginning to run into a common problem: I need a mapping from piece or square to piece array.
+This issue appears
+- during pintest when I need to mark a piece as pinned (I currently just do it on the board), and
+- in `make_move` when I need to update the square of a particular piece in the list
+
+qperft gets around this by the board elements encoding the index of the piece list.  Another possible approach would be to somehow encode the piece index in the Move structure.  This might get sloppy considering I'm currently maintaining sepparate arrays for pawns, knights, and sliders.  Tonight, I aim to create the infrastructure required for this change.

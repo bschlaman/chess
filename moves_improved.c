@@ -569,6 +569,9 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	SIDE side = bs -> stm;
 	int fwd = side == WHITE ? TUP : TDN;
 	int captured_piece = move_flag == M_CAPT_EP ? b[to - fwd] : b[to];
+	// another problem here (similar to line 321).
+	// how do I update the piece lists
+	// if pieces of the same type are not differentiated?
 	int piece = b[from];
 
 	// TODO: is there a better way?  also, can I do move_stack this way?
@@ -585,8 +588,12 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	b[to] = b[from];
 	b[from] = EMPTY;
 	// special cases
-
+	switch(move_flag){
+		case M_QUIET: break;
+		case M_CSTL_KING: break;
+	}
 }
+
 void undo_move(){
 	puts("");
 }
