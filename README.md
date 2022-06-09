@@ -202,4 +202,11 @@ This issue appears
 - during pintest when I need to mark a piece as pinned (I currently just do it on the board), and
 - in `make_move` when I need to update the square of a particular piece in the list
 
-qperft gets around this by the board elements encoding the index of the piece list.  Another possible approach would be to somehow encode the piece index in the Move structure.  This might get sloppy considering I'm currently maintaining sepparate arrays for pawns, knights, and sliders.  Tonight, I aim to create the infrastructure required for this change.
+qperft gets around this by the board elements encoding the index of the piece list.  Another possible approach would be to somehow encode the piece index in the Move structure.  This might get sloppy considering I'm currently maintaining sepparate arrays for pawns, knights, and sliders.  A fundamental change to the board array would be incredibly invasive and may cause extensibility problems.  If I go this route, I should at a minimum understand its potential consequences for the eval function.
+
+A piece value should store the following properties
+- color
+- type
+- piece list index
+
+In qperft, the piece value _is_ the piece list index.  To get the piece type, a 2nd array `kind` is needed.
