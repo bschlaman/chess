@@ -57,6 +57,8 @@ char *get_algebraic(int sq120);
 SIDE getColor(int piece);
 bool on2ndRank(int sq, bool color);
 bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SIDE side);
+void test_move_gen(BOARD_STATE *bs);
+void test_board_rep(BOARD_STATE *bs);
 
 enum {
 	// elemental attack types
@@ -119,7 +121,7 @@ const PIECE_TYPE type_map[] = {
 };
 
 // TODO: create a better system for this
-enum {
+typedef enum {
 	M_PROMOTION = 8,
 	M_CAPTURE   = 4,
 	M_BIT2      = 2,
@@ -128,7 +130,7 @@ enum {
 	M_QUIET        = 0,
 	M_CSTL_KING    = M_BIT1,
 	M_CSTL_QUEEN   = M_BIT1 | M_BIT2,
-	M_CAPTURE      = M_CAPTURE,
+	M_CAPT         = M_CAPTURE,
 	M_CAPT_EP      = M_CAPTURE | M_BIT1,
 	M_PROMO_N      = M_PROMOTION,
 	M_PROMO_B      = M_PROMOTION | M_BIT1,
@@ -179,6 +181,26 @@ int
 	contact_idx[2] = {1, 1},
 	pawns_idx[2];
 
+typedef unsigned int PIECE;
+// 0000000000000000000000 00000000 00
+//         piece list idx     type color
+#define PLI_OFFSET 10
+#define tEMPTY  0x00
+#define tWHITE  0x01
+#define tBLACK  0x02
+#define tGUARD  0x03
+#define tPAWN   0x04
+#define tKNIGHT 0x08
+#define tBISHOP 0x10
+#define tROOK   0x20
+#define tQUEEN  0x40
+#define tKING   0x80
+#define NUM_NON_KING_TYPES 5
+// TODO: extracting color from PIECE looks like
+// piece & COLOR_MASK - 1 which is gross
+#define COLOR_MASK 0x03
+int pieces[2][1 + BOARD_SIZE * NUM_NON_KING_TYPES];
+
 // used primarily for pintests
 // const int max_distance = H8-A1;
 int
@@ -221,12 +243,18 @@ void init_board(BOARD_STATE *bs){
 }
 
 void init_pieces(BOARD_STATE *bs){
+	memset(sliders_idx, 0, sizeof(sliders_idx));
+	contact_idx[BLACK] = contact_idx[WHITE] = 1;
+	memset(pawns_idx, 0, sizeof(pawns_idx));
 	ASSERT(sliders_idx[BLACK] == 0);
 	ASSERT(sliders_idx[WHITE] == 0);
 	ASSERT(contact_idx[BLACK] == 1);
 	ASSERT(contact_idx[WHITE] == 1);
 	ASSERT(pawns_idx[BLACK] == 0);
 	ASSERT(pawns_idx[WHITE] == 0);
+
+	move_stack_idx = 0;
+
 	for(int i = 0; i < BOARD_SIZE; i++){
 		int sq120i = sq64to120(i);
 		// TODO: I could add breaks here but I don't need to optomize this function
@@ -271,6 +299,7 @@ void print_move_stack(BOARD_STATE *bs){
 	printf(YEL "total moves:" reset " %d\n", move_stack_idx);
 }
 
+// TODO: move type not used yet
 void create_move(int from, int to, MOVE_TYPE mtype){
 	MOVE move = from << MOVE_FROM_OFFSET | to << MOVE_FLAG_NUM_BITS;
 	move_stack[move_stack_idx++] = move;
@@ -576,7 +605,7 @@ void make_move(BOARD_STATE *bs, MOVE move){
 
 	// TODO: is there a better way?  also, can I do move_stack this way?
 	// 1) save irreversible aspects of the move
-	MOVE_IRREV *mi = move_stack_irrev[bs -> ply];
+	MOVE_IRREV *mi = &move_stack_irrev[bs -> ply];
 	mi -> ep_sq = bs -> ep_sq;
 	mi -> castle_perms = bs -> castlePermission;
 	mi -> captured_piece = captured_piece;
@@ -600,15 +629,7 @@ void undo_move(){
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFEN1[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
-	char testFEN2[] = "rnbqk1nr/pppppppp/8/b7/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
-	char testFEN3[] = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -";
-	char testFEN4[] = "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK -";
-	char testFENa[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3"; // 8
-	char testFENb[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3"; // 5
-	char testFENc[] = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3"; // 7
-	char testFENx[] = "8/8/8/8/R1pP2k1/8/8/4K3 b - d3";
-	char testFEN[] = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -";
+	char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -618,6 +639,8 @@ void main(){
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
+	test_move_gen(bs);
+	test_board_rep(bs);
 }
 
 // UTILS BELOW main
@@ -817,5 +840,90 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 		ASSERT(file >= 1 && file <= 8);
 		ASSERT(rank >= 1 && rank <= 8);
 		bs -> ep_sq = sq64to120(frToSq64(file, rank));
+	}
+}
+
+void test_board_rep(BOARD_STATE *bs){
+	// kiwipete position
+	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+
+	init_board(bs);
+	parseFEN(bs, testFEN);
+	init_pieces(bs);
+	init_vectors();
+
+	int *b = bs -> board;
+
+	ASSERT(b[E1] & tKING & tWHITE);
+	ASSERT(b[E8] & tKING & tBLACK);
+	ASSERT(b[G7] & tBISHOP & tBLACK);
+	ASSERT(b[A7] & tPAWN & tBLACK);
+	ASSERT(b[D4] & tEMPTY);
+	ASSERT(b[0] & tGUARD);
+	ASSERT(b[103] & tGUARD);
+	ASSERT(b[89] & tGUARD);
+
+	PIECE piece = b[B6];
+	int piece_list_index = piece >> PLI_OFFSET;
+	SIDE side = piece & COLOR_MASK - 1;
+	ASSERT(pieces[side][piece_list_index] == B6);
+}
+
+typedef struct {
+	char fen[99];
+	int depth;
+	long nodes;
+} TEST_POSITION;
+
+TEST_POSITION tps[] = {
+	{
+		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
+		.depth = 1,
+		.nodes = 218,
+	},
+	{
+		// kiwipete
+		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
+		.depth = 1,
+		.nodes = 48,
+	},
+	{
+		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
+		.depth = 1,
+		.nodes = 8,
+	},
+	{
+		.fen = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3",
+		.depth = 1,
+		.nodes = 5,
+	},
+	{
+		.fen = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3",
+		.depth = 1,
+		.nodes = 7,
+	},
+	{
+		.fen = "8/8/8/8/R1pP2k1/8/8/4K3 b - d3",
+		.depth = 1,
+		.nodes = 9,
+	},
+};
+
+size_t tpsSize(){
+	return sizeof(tps) / sizeof(TEST_POSITION);
+}
+
+void test_move_gen(BOARD_STATE *bs){
+	for(int i = 0; i < tpsSize(); i++){
+		init_board(bs);
+		parseFEN(bs, tps[i].fen);
+		init_pieces(bs);
+		init_vectors();
+
+		int num_legal_moves = move_stack_idx;
+		printf("pos: %2d, depth: %3d ", i, tps[i].depth, i);
+		printf("wanted: %8d, got: %8d ", tps[i].nodes, num_legal_moves);
+		printf("%s\n" reset, num_legal_moves == tps[i].nodes ? GRN "✓" : RED "X");
+		ASSERT(tps[i].nodes == num_legal_moves);
 	}
 }
