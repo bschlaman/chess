@@ -584,12 +584,19 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 	for(int i = 0; i < sliders_idx[side]; i++){
 		csq = sliders[side][i];
 		if(csq == CAPTURED) continue;
+		// check for block by pawn that ends up on ep_sq after capture
+		// note that the 0 == 0 case will also be checked here
+		// if csq -> sq and csq -> ep_captured_sq - fwd
+		// are not reachable by attack vector
+		// note: this seems fragile (e.g. A_KNIGHT complications)
+		if(ep_captured_sq != OFFBOARD \
+			&& increment_vector[csq - sq] \
+			== increment_vector[csq - ep_captured_sq - fwd]) continue;
 		if(attack_type[csq - sq] & attack_map[b[csq]]){
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
 			while(b[sq_offset+=vector] == EMPTY \
-				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq)
-				if(b[sq_offset] == ep_captured_sq + fwd) break;
+				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq);
 			if(sq_offset == csq) return true;
 		}
 	}
@@ -636,8 +643,7 @@ void undo_move(){
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	// char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
-	char testFEN[] = "6k1/8/8/2K5/5pP1/8/8/6Q1 b - g3";
+	char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -647,8 +653,8 @@ void main(){
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
-	test_move_gen();
-	test_board_rep();
+	// test_move_gen();
+	// test_board_rep();
 }
 
 // UTILS BELOW main
@@ -935,6 +941,16 @@ TEST_POSITION tps[] = {
 		.fen = "6k1/8/8/2K5/5pP1/8/8/6Q1 b - g3",
 		.depth = 1,
 		.nodes = 7,
+	},
+	{
+		.fen = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6",
+		.depth = 1,
+		.nodes = 6,
+	},
+	{
+		.fen = "6q1/8/8/3K1pP1/8/8/1k6/8 w - f6",
+		.depth = 1,
+		.nodes = 5,
 	},
 };
 
