@@ -879,12 +879,39 @@ void test_board_rep(){
 	ASSERT(pieces[side][piece_list_index] == B6);
 }
 
-typedef struct {
+typedef struct test_position {
 	char desc[99];
 	char fen[99];
 	int depth;
 	long nodes;
 } TEST_POSITION;
+
+typedef struct {
+	TEST_POSITION tps;
+	// TODO: should be sized for largest possible PNG
+	char best_move[8];
+} EVAL_TEST_POSITION;
+
+EVAL_TEST_POSITION etps[] = {
+	{
+		.tps.desc = "chess puzzle: win queen",
+		.tps.fen = "7Q/8/3pk2p/7P/8/p2q1B2/2p2P2/1bK5 w - -",
+		.tps.depth = 1,
+		.best_move = "Be2",
+	},
+	{
+		.tps.desc = "chess puzzle: king and 3 pawns: Kg1 g3 Kg2 kc7/a7 b8Q",
+		.tps.fen = "1k6/1P6/2P5/P7/5ppp/8/6K1/8 w - -",
+		.tps.depth = 5,
+		.best_move = "Kg1",
+	},
+	{
+		.tps.desc = "famous game with tactical sequence starting with rc1 possibly ending with rc8 or f6 mate",
+		.tps.fen = "1R1Q4/p4p1k/q5p1/P1r2p1p/8/1b2PP2/6PP/6K1 b - -",
+		.tps.depth = 1,
+		.best_move = "Be2",
+	},
+};
 
 TEST_POSITION tps[] = {
 	{
