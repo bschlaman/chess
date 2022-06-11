@@ -336,7 +336,6 @@ void gen_legal_moves(BOARD_STATE *bs){
 		int vector = increment_vector[opp_slider_sq - ksq];
 		if(attack_type[opp_slider_sq - ksq] & attack_map[b[opp_slider_sq]] & A_DISTANT){
 			// opponent slider is aimed at king
-			printf("slider aimed at king: %s\n", get_algebraic(opp_slider_sq));
 			// TODO: use a different name than sq_offset
 			int sq_offset = ksq;
 			while((piece = b[sq_offset+=vector]) == EMPTY);
@@ -645,10 +644,23 @@ void undo_move(){
 	puts("");
 }
 
+void unit_tests(){
+	char *good = "[" GRN " OK " reset"]";
+	char *fail = "[" RED "FAIL" reset"]";
+	printf(MAG "testing board_to_vboard: " reset "     %s\n", good);
+	test_board_to_vboard();
+	printf(MAG "testing vboard_to_board: " reset "     %s\n", good);
+	test_vboard_to_board();
+	printf(MAG "testing move generation: " reset "     %s\n", good);
+	test_move_gen();
+	printf(MAG "testing board representation: " reset "%s\n", good);
+	test_board_rep();
+}
+
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFENx[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
-	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"; // 7
+	char testFENx[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"; // 7
+	char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -658,10 +670,7 @@ void main(){
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
-	test_board_to_vboard();
-	test_vboard_to_board();
-	test_move_gen();
-	test_board_rep();
+	unit_tests();
 }
 
 // UTILS BELOW main
