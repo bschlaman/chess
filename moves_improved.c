@@ -7,7 +7,8 @@
 
 #define ASSERT(n) \
 if(!(n)){ \
-    printf(RED "====== assert error\n" YEL "%s\n" reset, #n); \
+    printf(RED WHTB "====== ASSERT error ======" reset "\n"); \
+		printf(YEL "%s\n" reset, #n); \
     printf(RED "file: " reset "%s ", __FILE__); \
     printf(RED "line: " reset "%d\n", __LINE__); \
     exit(1); \
@@ -240,6 +241,7 @@ void init_board(BOARD_STATE *bs){
 		bs -> board[sq64to120(i)] = EMPTY;
 	bs -> ply = 1;
 	bs -> ep_sq = OFFBOARD;
+	bs -> castlePermission = 0;
 }
 
 void init_pieces(BOARD_STATE *bs){
@@ -441,11 +443,11 @@ void gen_legal_moves(BOARD_STATE *bs){
 	csq = ep_sq	- fwd + TLF;
 	if(b[csq] == piece \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
-		create_move(ep_sq - fwd + TLF, ep_sq, piece);
+		create_move(csq, ep_sq, piece);
 	csq = ep_sq	- fwd + TRT;
 	if(b[csq] == piece \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
-		create_move(ep_sq - fwd + TLF, ep_sq, piece);
+		create_move(csq, ep_sq, piece);
 
 	NORMAL_MOVES:
 	if(check & (CHECK_KNIGHT | CHECK_KING_ROSE)){
@@ -550,8 +552,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 		}
 	}
 	KING_MOVES:
-	for(int i = 0; i < numDirections[KING]; i++){
-		csq = ksq + translation[KING][i];
+	for(int d = 0; d < numDirections[KING]; d++){
+		csq = ksq + translation[KING][d];
 		if(b[csq] == OFFBOARD || color_map[b[csq]] == side || b[csq] == PINNED) continue;
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
@@ -586,7 +588,8 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
 			while(b[sq_offset+=vector] == EMPTY \
-				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq);
+				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq)
+				if(b[sq_offset] == ep_captured_sq + fwd) break;
 			if(sq_offset == csq) return true;
 		}
 	}
@@ -634,7 +637,7 @@ void undo_move(){
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
-	char testFEN[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3";
+	char testFEN[] = "6k1/8/8/2K5/5pP1/8/8/6Q1 b - g3";
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -924,12 +927,12 @@ TEST_POSITION tps[] = {
 		.nodes = 9,
 	},
 	{
-		.fen = "8/1K6/8/8/1kpP4/8/8/4Q3 w - d3",
+		.fen = "8/1K6/8/8/1kpP4/8/8/4Q3 b - d3",
 		.depth = 1,
-		.nodes = 4,
+		.nodes = 5,
 	},
 	{
-		.fen = "6k1/8/8/2K5/5pP1/8/8/6Q1 w - g3",
+		.fen = "6k1/8/8/2K5/5pP1/8/8/6Q1 b - g3",
 		.depth = 1,
 		.nodes = 7,
 	},
@@ -949,10 +952,6 @@ void test_move_gen(){
 
 		gen_legal_moves(bs);
 		int num_legal_moves = move_stack_idx;
-		if(tps[i].nodes == 5){
-			print_board(bs, OPT_BOARD_STATE|OPT_VBOARD|OPT_64_BOARD);
-			print_move_stack(bs);
-		}
 
 		printf("pos: %2d, depth: %3d ", i, tps[i].depth, i);
 		printf("wanted: %8d, got: %8d ", tps[i].nodes, num_legal_moves);
