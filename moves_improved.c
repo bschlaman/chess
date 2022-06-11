@@ -56,9 +56,9 @@ void print_board(BOARD_STATE *bs, int opt);
 char *get_algebraic(int sq120);
 SIDE getColor(int piece);
 bool on2ndRank(int sq, bool color);
-bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SIDE side);
-void test_move_gen(BOARD_STATE *bs);
-void test_board_rep(BOARD_STATE *bs);
+bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, SIDE side);
+void test_move_gen();
+void test_board_rep();
 
 enum {
 	// elemental attack types
@@ -143,7 +143,7 @@ typedef enum {
 } MOVE_TYPE;
 
 // print_board opts
-enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4, OPT_PINNED = 8 };
+enum { OPT_64_BOARD = 1, OPT_BOARD_STATE = 2, OPT_VBOARD = 4 };
 
 enum {
 	CHECK_SLIDER_DISTANT = 1,
@@ -289,7 +289,7 @@ void print_move_stack(BOARD_STATE *bs){
 	for(int i = 0; i < move_stack_idx; i++){
 		int from = move_stack[i] >> MOVE_FROM_OFFSET;
 		int to = (move_stack[i] >> MOVE_FLAG_NUM_BITS) & MOVE_TO_MASK;
-		printf(BLU "MOVE " reset "%c: %s -> %s\n",
+		printf(CYN "MOVE " reset "%c: %s -> %s\n",
 			pieceChar[bs -> board[from]],
 			get_algebraic(from),
 			get_algebraic(to),
@@ -434,15 +434,19 @@ void gen_legal_moves(BOARD_STATE *bs){
 			create_move(ksq, ksq + TLF + TLF, b[ksq]);
 		}
 	}
+
 	EP_MOVES:
 	if(ep_sq == OFFBOARD) goto NORMAL_MOVES;
 	piece = side == WHITE ? wP : bP;
-	if(b[ep_sq - fwd + TLF] == piece \
-		&& !square_attacked_by_side(b, ksq, ep_sq - fwd, ep_sq - fwd + TLF, !side))
+	csq = ep_sq	- fwd + TLF;
+	if(b[csq] == piece \
+		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(ep_sq - fwd + TLF, ep_sq, piece);
-	if(b[ep_sq - fwd + TRT] == piece \
-		&& !square_attacked_by_side(b, ksq, ep_sq - fwd, ep_sq - fwd + TRT, !side))
-		create_move(ep_sq - fwd + TRT, ep_sq, piece);
+	csq = ep_sq	- fwd + TRT;
+	if(b[csq] == piece \
+		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
+		create_move(ep_sq - fwd + TLF, ep_sq, piece);
+
 	NORMAL_MOVES:
 	if(check & (CHECK_KNIGHT | CHECK_KING_ROSE)){
 		// can only move the king or capture the checker
@@ -552,22 +556,22 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
 	}
-	while(pin_idx > 0){
-		b[pin_sqs[pin_idx]] = pin_pieces[pin_idx];
-		pin_idx--;
-	}
+	while(pin_idx > 0)
+		b[pin_sqs[--pin_idx]] = pin_pieces[pin_idx];
 }
 
-// TODO: probably a better solution than 2 ignore squares
-bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SIDE side){
+// TODO: probably a better name than ignore_sq
+bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, SIDE side){
 	// note: this doesn't take pinned pieces into account!
 	// used for check detection
 	int fwd = side == WHITE ? TUP : TDN;
 	int csq;
 	// pawns
 	int piece = side == WHITE ? wP : bP;
-	if(b[sq - fwd + TLF] == piece) return true;
-	if(b[sq - fwd + TRT] == piece) return true;
+	csq = sq - fwd + TLF;
+	if(b[csq] == piece && csq != ep_captured_sq) return true;
+	csq = sq - fwd + TRT;
+	if(b[csq] == piece && csq != ep_captured_sq) return true;
 	// knights
 	for(int i = 1; i < contact_idx[side]; i++){
 		csq = contact[side][i];
@@ -582,7 +586,7 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq1, int ignore_sq2, SID
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
 			while(b[sq_offset+=vector] == EMPTY \
-				|| sq_offset == ignore_sq1 || sq_offset == ignore_sq2);
+				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq);
 			if(sq_offset == csq) return true;
 		}
 	}
@@ -629,18 +633,19 @@ void undo_move(){
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
+	// char testFEN[] = "r3k2r/1p6/8/8/b4Pp1/8/8/R3K2R w KQkq -";
+	char testFEN[] = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3";
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
 	init_pieces(bs);
 	init_vectors();
 
-	print_board(bs, OPT_VBOARD|OPT_64_BOARD);
+	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
-	test_move_gen(bs);
-	test_board_rep(bs);
+	test_move_gen();
+	test_board_rep();
 }
 
 // UTILS BELOW main
@@ -678,6 +683,11 @@ void print_board(BOARD_STATE *bs, int opt){
 			printf(RED "%2c" reset, file + 'a');
 		}
 		puts("");
+	}
+	if(opt & OPT_BOARD_STATE){
+		printf(BLU "side to move: " reset "%s\n", bs -> stm == WHITE ? "white" : "black");
+		printf(BLU "ply: " reset "%d\n", bs -> ply);
+		printf(BLU "en passant sq: " reset "%s\n", get_algebraic(bs -> ep_sq));
 	}
 }
 
@@ -843,7 +853,8 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 	}
 }
 
-void test_board_rep(BOARD_STATE *bs){
+void test_board_rep(){
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// kiwipete position
 	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
@@ -883,7 +894,7 @@ TEST_POSITION tps[] = {
 	},
 	{
 		// kiwipete
-		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
+		.fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
 		.depth = 1,
 		.nodes = 48,
 	},
@@ -891,6 +902,11 @@ TEST_POSITION tps[] = {
 		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
 		.depth = 1,
 		.nodes = 8,
+	},
+	{
+		.fen = "3r4/8/8/3Pp3/3K3k/8/8/8 w - d6",
+		.depth = 1,
+		.nodes = 7,
 	},
 	{
 		.fen = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3",
@@ -907,20 +923,37 @@ TEST_POSITION tps[] = {
 		.depth = 1,
 		.nodes = 9,
 	},
+	{
+		.fen = "8/1K6/8/8/1kpP4/8/8/4Q3 w - d3",
+		.depth = 1,
+		.nodes = 4,
+	},
+	{
+		.fen = "6k1/8/8/2K5/5pP1/8/8/6Q1 w - g3",
+		.depth = 1,
+		.nodes = 7,
+	},
 };
 
 size_t tpsSize(){
 	return sizeof(tps) / sizeof(TEST_POSITION);
 }
 
-void test_move_gen(BOARD_STATE *bs){
+void test_move_gen(){
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	for(int i = 0; i < tpsSize(); i++){
 		init_board(bs);
 		parseFEN(bs, tps[i].fen);
 		init_pieces(bs);
 		init_vectors();
 
+		gen_legal_moves(bs);
 		int num_legal_moves = move_stack_idx;
+		if(tps[i].nodes == 5){
+			print_board(bs, OPT_BOARD_STATE|OPT_VBOARD|OPT_64_BOARD);
+			print_move_stack(bs);
+		}
+
 		printf("pos: %2d, depth: %3d ", i, tps[i].depth, i);
 		printf("wanted: %8d, got: %8d ", tps[i].nodes, num_legal_moves);
 		printf("%s\n" reset, num_legal_moves == tps[i].nodes ? GRN "✓" : RED "X");
