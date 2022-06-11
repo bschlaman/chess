@@ -16,12 +16,15 @@ if(!(n)){ \
 
 #define BOARD_SIZE 64
 // VBOARD: virtual board
-#define VBOARD_WIDTH 10
+#define VBOARD_WIDTH 15
 #define VBOARD_HEIGHT 12
-#define VBOARD_SIZE 120
-#define BOARD_TO_VBOARD_OFFSET 21
-#define MAX_VBOARD_DISTANCE 77
-#define BLACK_RANK_OFFSET 70
+#define VBOARD_SIZE (VBOARD_WIDTH*VBOARD_HEIGHT)
+// A1
+#define VBOARD_OFFSET 31
+// H8 - A1
+#define MAX_VBOARD_DISTANCE (7*VBOARD_WIDTH + 7)
+// 7 * VBOARD_WIDTH
+#define BLACK_RANK_OFFSET (7*VBOARD_WIDTH)
 #define MOVE_TO_MASK 0x3FFF
 #define MOVE_FLAG_MASK 0x0F
 #define MOVE_FLAG_NUM_BITS 4
@@ -50,18 +53,20 @@ typedef struct {
 
 // util functions
 void parseFEN(BOARD_STATE *bs, char *fen);
-int sq64to120(int sq64);
-int sq120to64(int sq120);
+int board_to_vboard(int sq64);
+int vboard_to_board(int vsq);
 int frToSq64(int file, int rank);
 void print_board(BOARD_STATE *bs, int opt);
-char *get_algebraic(int sq120);
+char *get_algebraic(int vsq);
 SIDE getColor(int piece);
-bool on2ndRank(int sq, bool color);
+bool on_2nd_rank(int sq, SIDE side);
 bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, SIDE side);
 void test_move_gen();
 void test_board_rep();
+void test_board_to_vboard();
+void test_vboard_to_board();
 
-enum {
+const int
 	// elemental attack types
 	A_CONTACT_FORW      = 0x01,
 	A_CONTACT_BCKW      = 0x02,
@@ -81,25 +86,24 @@ enum {
 	A_ROOK    = A_DISTANT_ORTH | A_WAZIR,
 	A_QUEEN   = A_BISHOP | A_ROOK,
 	A_CONTACT = A_KNIGHT | A_KING,
-	A_DISTANT = A_DISTANT_ORTH | A_DISTANT_DIAG,
-};
+	A_DISTANT = A_DISTANT_ORTH | A_DISTANT_DIAG;
 
-// translate up, right, down, left, etc.
-enum {
-	TUP =  10,
-	TRT =   1,
-	TDN = -10,
-	TLF =  -1,
-	TNW =   9,
-	TNE =  11,
-	TSE =  -9,
-	TSW = -11,
-};
 const char pieceChar[] = "-.PNBRQKpnbrqk";
 const char castleChar[] = "KQkq";
+// translate up, right, down, left, etc.
+const int
+	TUP = VBOARD_WIDTH,
+	TRT = 1,
+	TDN = -VBOARD_WIDTH,
+	TLF = -1,
+	TNW = TUP + TLF,
+	TNE = TUP + TRT,
+	TSE = TDN + TRT,
+	TSW = TDN + TLF;
 const int numDirections[] = {8, 4, 4, 8, 8};
 const int translation[][8] = {
-	{-21, -12, 8, 19, 21, 12, -8, -19}, // knights 0
+	{TNE+TRT, TNE+TUP, TNW+TUP, TNW+TLF,
+		TSW+TLF, TSW+TDN, TSE+TDN, TSE+TRT}, // knights 0
 	{TNE, TSE, TSW, TNW}, // bishops 1
 	{TUP, TRT, TDN, TLF}, // rooks 2
 	{TUP, TRT, TDN, TLF, TNE, TSE, TSW, TNW}, // queens 3
@@ -238,7 +242,7 @@ void init_board(BOARD_STATE *bs){
 	for(int i = 0 ; i < VBOARD_SIZE ; i++)
 		bs -> board[i] = OFFBOARD;
 	for(int i = 0 ; i < BOARD_SIZE ; i++)
-		bs -> board[sq64to120(i)] = EMPTY;
+		bs -> board[board_to_vboard(i)] = EMPTY;
 	bs -> ply = 1;
 	bs -> ep_sq = OFFBOARD;
 	bs -> castlePermission = 0;
@@ -258,29 +262,29 @@ void init_pieces(BOARD_STATE *bs){
 	move_stack_idx = 0;
 
 	for(int i = 0; i < BOARD_SIZE; i++){
-		int sq120i = sq64to120(i);
+		int vsqi = board_to_vboard(i);
 		// TODO: I could add breaks here but I don't need to optomize this function
-		switch(bs -> board[sq120i]){
+		switch(bs -> board[vsqi]){
 			case bP:
-				pawns[BLACK][pawns_idx[BLACK]++] = sq120i; break;
+				pawns[BLACK][pawns_idx[BLACK]++] = vsqi; break;
 			case wP:
-				pawns[WHITE][pawns_idx[WHITE]++] = sq120i; break;
+				pawns[WHITE][pawns_idx[WHITE]++] = vsqi; break;
 			case bN:
-				contact[BLACK][contact_idx[BLACK]++] = sq120i; break;
+				contact[BLACK][contact_idx[BLACK]++] = vsqi; break;
 			case wN:
-				contact[WHITE][contact_idx[WHITE]++] = sq120i; break;
+				contact[WHITE][contact_idx[WHITE]++] = vsqi; break;
 			case bB:
 			case bR:
 			case bQ:
-				sliders[BLACK][sliders_idx[BLACK]++] = sq120i; break;
+				sliders[BLACK][sliders_idx[BLACK]++] = vsqi; break;
 			case wB:
 			case wR:
 			case wQ:
-				sliders[WHITE][sliders_idx[WHITE]++] = sq120i; break;
+				sliders[WHITE][sliders_idx[WHITE]++] = vsqi; break;
 			case bK:
-				contact[BLACK][0] = sq120i; break;
+				contact[BLACK][0] = vsqi; break;
 			case wK:
-				contact[WHITE][0] = sq120i; break;
+				contact[WHITE][0] = vsqi; break;
 		}
 	}
 	ASSERT(bs -> board[contact[BLACK][0]] == bK);
@@ -361,7 +365,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 								// push pawn 1 sq
 								create_move(pin_sq, csq, piece);
 								// push pawn 2 sq
-								if(on2ndRank(pin_sq, side) && b[csq+=fwd] == EMPTY)
+								if(on_2nd_rank(pin_sq, side) && b[csq+=fwd] == EMPTY)
 									create_move(pin_sq, csq, piece);
 							}
 						} else {
@@ -496,7 +500,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			csq = pawn_sq + fwd;
 			if(b[csq] == EMPTY){
 				create_move(pawn_sq, csq, b[pawn_sq]);
-				if(on2ndRank(pawn_sq, side) && b[csq+=fwd] == EMPTY)
+				if(on_2nd_rank(pawn_sq, side) && b[csq+=fwd] == EMPTY)
 					create_move(pawn_sq, csq, b[pawn_sq]);
 			}
 		}
@@ -643,7 +647,8 @@ void undo_move(){
 
 void main(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
+	char testFENx[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
+	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"; // 7
 	// TODO: i dont like having to parseFEN between these init steps
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -653,8 +658,10 @@ void main(){
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
-	// test_move_gen();
-	// test_board_rep();
+	test_board_to_vboard();
+	test_vboard_to_board();
+	test_move_gen();
+	test_board_rep();
 }
 
 // UTILS BELOW main
@@ -681,7 +688,7 @@ void print_board(BOARD_STATE *bs, int opt){
 		for(int rank = 8; rank >= 1; rank--){
 			printf(RED "%d " reset, rank);
 			for(int file = 1; file <= 8; file++){
-				int piece = bs -> board[sq64to120(frToSq64(file, rank))];
+				int piece = bs -> board[board_to_vboard(frToSq64(file, rank))];
 				printf("%2c", pieceChar[piece]);
 			}
 			puts("");
@@ -700,18 +707,14 @@ void print_board(BOARD_STATE *bs, int opt){
 	}
 }
 
-int sq64to120(int sq64){
-	return sq64 + 21 + 2 * (sq64 - sq64 % 8) / 8;
+int board_to_vboard(int sq64){
+	// offset + file + width * rank
+	return VBOARD_OFFSET + sq64 % 8 + VBOARD_WIDTH * (sq64 - sq64 % 8) / 8;
 }
 
-int sq120to64(int sq120){
-	return sq120 - 17 - 2 * (sq120 - sq120 % 10) / 10;;
-}
-
-// returns sq64 of index, but starting at the 8th rank
-// used for printing board and generating FEN
-int invertRows(int i){
-	return 56 + i - 2 * (i - i % 8);
+int vboard_to_board(int vsq){
+	vsq -= VBOARD_OFFSET;
+	return (vsq % VBOARD_WIDTH) + 8 * (vsq - vsq % VBOARD_WIDTH) / VBOARD_WIDTH;
 }
 
 // ranks and files are 1-8; e.g. a file is 1
@@ -719,22 +722,14 @@ int frToSq64(int file, int rank){
 	return 8 * (rank - 1) + (file - 1);
 }
 
-char *get_algebraic(int sq120){
-	int sq64 = sq120to64(sq120);
+char *get_algebraic(int vsq){
+	int sq64 = vboard_to_board(vsq);
 	char *sqAN = malloc(3 * sizeof(char));
 	sqAN[0] = (sq64 % 8) + 'a';
 	sqAN[1] = (sq64 - sq64 % 8) / 8 + '1';
 	sqAN[2] = '\0';
-	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-'; *p++ = '\0'; }
+	if(vsq == OFFBOARD){ char *p = sqAN; *p++ = '-'; *p++ = '\0'; }
 	return sqAN;
-}
-
-// copy algebraic notation of sq120 into sqStrPtr
-void getAlgebraic(char *sqStrPtr, int sq120){
-	int sq64 = sq120to64(sq120);
-	char sqAN[] = {(sq64 % 8) + 'a', (sq64 - sq64 % 8) / 8 + '1', '\0'};
-	if(sq120 == OFFBOARD){ char *p = sqAN; *p++ = '-'; *p++ = '\0'; }
-	strcpy(sqStrPtr, sqAN);
 }
 
 // copy fen notation of castling rights into sqStrPtr
@@ -763,17 +758,11 @@ SIDE getColor(int piece){
 	return piece >= bP && piece <= bK;
 }
 
-bool on2ndRank(int sq, bool color){
-	return sq - 30 - 50 * color >= 1 && sq - 30 - 50 * color <= 8;
-}
-bool on7thRank(int sq, bool color){
-	return on2ndRank(sq, !color);
-}
-
-// TODO: get rid of this silliness
-// returns if the enpassant sq can be captured by the side to move
-bool enPasCorrectColor(int enPas, bool stm){
-	return enPas - 70 + 30 * stm >= 1 && enPas - 70 + 30 * stm <= 8;
+// TODO: inefficient?
+bool on_2nd_rank(int sq, SIDE side){
+	int offset64 = side == WHITE ? 0 : 40;
+	int sq64 = vboard_to_board(sq) - offset64;
+	return sq64 >= 8 && sq64 <= 15;
 }
 
 void parseFEN(BOARD_STATE *bs, char *fen){
@@ -821,12 +810,12 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 
 		// TODO: stick to one ordering of black and white
 		if(piece == wK)
-			contact[WHITE][0] = sq64to120(frToSq64(file, rank));
+			contact[WHITE][0] = board_to_vboard(frToSq64(file, rank));
 		if(piece == bK)
-			contact[BLACK][0] = sq64to120(frToSq64(file, rank));
+			contact[BLACK][0] = board_to_vboard(frToSq64(file, rank));
 
 		for(int i = 0 ; i < num ; i++){
-			bs -> board[sq64to120(frToSq64(file, rank))] = piece;
+			bs -> board[board_to_vboard(frToSq64(file, rank))] = piece;
 			file++;
 		}
 		fen++;
@@ -858,7 +847,7 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 		rank = fen[1] - '0';
 		ASSERT(file >= 1 && file <= 8);
 		ASSERT(rank >= 1 && rank <= 8);
-		bs -> ep_sq = sq64to120(frToSq64(file, rank));
+		bs -> ep_sq = board_to_vboard(frToSq64(file, rank));
 	}
 }
 
@@ -879,6 +868,7 @@ void test_board_rep(){
 	ASSERT(b[G7] & tBISHOP & tBLACK);
 	ASSERT(b[A7] & tPAWN & tBLACK);
 	ASSERT(b[D4] & tEMPTY);
+	// TODO: change these hardcoded values
 	ASSERT(b[0] & tGUARD);
 	ASSERT(b[103] & tGUARD);
 	ASSERT(b[89] & tGUARD);
@@ -890,6 +880,7 @@ void test_board_rep(){
 }
 
 typedef struct {
+	char desc[99];
 	char fen[99];
 	int depth;
 	long nodes;
@@ -897,57 +888,67 @@ typedef struct {
 
 TEST_POSITION tps[] = {
 	{
+		.desc = "max possible moves",
 		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
 		.depth = 1,
 		.nodes = 218,
 	},
 	{
-		// kiwipete
+		.desc = "kiwipete position",
 		.fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
 		.depth = 1,
 		.nodes = 48,
 	},
 	{
-		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
-		.depth = 1,
-		.nodes = 8,
-	},
-	{
+		.desc = "en passant our pawn vertical pin",
 		.fen = "3r4/8/8/3Pp3/3K3k/8/8/8 w - d6",
 		.depth = 1,
 		.nodes = 7,
 	},
 	{
-		.fen = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3",
-		.depth = 1,
-		.nodes = 5,
-	},
-	{
-		.fen = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3",
-		.depth = 1,
-		.nodes = 7,
-	},
-	{
-		.fen = "8/8/8/8/R1pP2k1/8/8/4K3 b - d3",
-		.depth = 1,
-		.nodes = 9,
-	},
-	{
-		.fen = "8/1K6/8/8/1kpP4/8/8/4Q3 b - d3",
-		.depth = 1,
-		.nodes = 5,
-	},
-	{
+		.desc = "en passant opponent pawn vertical pin",
 		.fen = "6k1/8/8/2K5/5pP1/8/8/6Q1 b - g3",
 		.depth = 1,
 		.nodes = 7,
 	},
 	{
+		.desc = "en passant our pawn diagonal pin",
+		.fen = "8/8/8/3k4/2pP4/8/B7/4K3 b - d3",
+		.depth = 1,
+		.nodes = 5,
+	},
+	{
+		.desc = "en passant opponent pawn diagonal pin",
+		.fen = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3",
+		.depth = 1,
+		.nodes = 7,
+	},
+	{
+		.desc = "en passant horizontal pin",
+		.fen = "8/8/8/8/R1pP2k1/8/8/4K3 b - d3",
+		.depth = 1,
+		.nodes = 9,
+	},
+	{
+		.desc = "en passant pawn check",
 		.fen = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6",
 		.depth = 1,
 		.nodes = 6,
 	},
 	{
+		.desc = "en passant pawn check",
+		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
+		.depth = 1,
+		.nodes = 8,
+	},
+	{
+		.desc = "en passant discovered check",
+		.fen = "8/1K6/8/8/1kpP4/8/8/4Q3 b - d3",
+		.depth = 1,
+		.nodes = 5,
+	},
+	{
+		.desc = "en passant discovered check",
 		.fen = "6q1/8/8/3K1pP1/8/8/1k6/8 w - f6",
 		.depth = 1,
 		.nodes = 5,
@@ -972,6 +973,24 @@ void test_move_gen(){
 		printf("pos: %2d, depth: %3d ", i, tps[i].depth, i);
 		printf("wanted: %8d, got: %8d ", tps[i].nodes, num_legal_moves);
 		printf("%s\n" reset, num_legal_moves == tps[i].nodes ? GRN "✓" : RED "X");
+		if(tps[i].nodes != num_legal_moves){
+			printf(RED "failed pos:" reset " %s\n", tps[i].desc);
+			print_board(bs, OPT_64_BOARD);
+		}
 		ASSERT(tps[i].nodes == num_legal_moves);
 	}
+}
+
+void test_board_to_vboard(){
+	ASSERT(board_to_vboard(0) == A1);
+	ASSERT(board_to_vboard(0) == VBOARD_OFFSET);
+	ASSERT(board_to_vboard(34) == C5);
+	ASSERT(board_to_vboard(61) == F8);
+}
+
+void test_vboard_to_board(){
+	ASSERT(vboard_to_board(A1) == 0);
+	ASSERT(vboard_to_board(VBOARD_OFFSET) == 0);
+	ASSERT(vboard_to_board(H7) == 55);
+	ASSERT(vboard_to_board(C2) == 10);
 }

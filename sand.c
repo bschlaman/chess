@@ -1,12 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <ctype.h>	
 #include <time.h>
-#include <limits.h>
 #include "colors.h"
-#include "defs.h"
 
 void initRand(){
 	time_t t;
@@ -35,6 +30,17 @@ int sq120to64(int sq120){
 int invertRows(int i){
 	return 0xB0 + i - 2 * (i - i % 0x10);
 }
+
+enum {
+    A1 = 0x22, B1, C1, D1, E1, F1, G1, H1,
+    A2 = 0x32, B2, C2, D2, E2, F2, G2, H2,
+    A3 = 0x42, B3, C3, D3, E3, F3, G3, H3,
+    A4 = 0x52, B4, C4, D4, E4, F4, G4, H4,
+    A5 = 0x62, B5, C5, D5, E5, F5, G5, H5,
+    A6 = 0x72, B6, C6, D6, E6, F6, G6, H6,
+    A7 = 0x82, B7, C7, D7, E7, F7, G7, H7,
+    A8 = 0x92, B8, C8, D8, E8, F8, G8, H8,
+};
 
 /* capture codes */
 #define C_ORTH    1
@@ -93,6 +99,11 @@ void delta_init(){
 	}
 }
 
+void asdf(int a){
+	a -= 5;
+	printf("a: %d\n", a);
+}
+
 int main(){
 	// =========================
 	// improving move generation
@@ -116,10 +127,17 @@ int main(){
 		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
-	puts("");
-	puts("");
-
+	puts("--- testing type sizes");
 	printf("%d\n", sizeof(unsigned short));
 	printf("%d\n", sizeof(unsigned int));
 	printf("%d\n", sizeof(unsigned char));
+
+	puts("looking at delta_vec values");
+	printf("%d %d \n", A4 - H3, delta_vec[A4 - H3]);
+	printf("aaaaaa: %d\n", 55 / 8);
+	puts("");
+	int b = 10;
+	printf("b: %d\n", b);
+	asdf(b);
+	printf("b: %b\n", 5 > 2 > 1);
 }
