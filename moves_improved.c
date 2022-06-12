@@ -175,17 +175,6 @@ MOVE_IRREV move_stack_irrev[MAX_PLY];
 // random primes; making sure my logic doesn't rely on these enums being 0
 #define CAPTURED 17
 #define PINNED   233
-int
-	sliders[2][BOARD_SIZE],
-	contact[2][BOARD_SIZE],
-	pawns[2][BOARD_SIZE];
-int
-	sliders_idx[2],
-	// TODO: store king squares as a BOARD_STATE var
-	// and make this an array of just knights
-	contact_idx[2] = {1, 1},
-	pawns_idx[2];
-
 typedef unsigned int PIECE;
 // 0000000000000000000000 00000000 00
 //         piece list idx     type color
@@ -204,7 +193,35 @@ typedef unsigned int PIECE;
 // TODO: extracting color from PIECE looks like
 // piece & COLOR_MASK - 1 which is gross
 #define COLOR_MASK 0x03
-int pieces[2][1 + BOARD_SIZE * NUM_NON_KING_TYPES];
+#define COLOR_OFFSET (1 + BOARD_SIZE * NUM_NON_KING_TYPES)
+PIECE pieces[2 * COLOR_OFFSET];
+// start indexes in pieces for each type
+// TODO: using "pawnz" to not break functionality yet
+#define king    (0)
+#define pawnz   (king + 1)
+#define knightz (pawnz + BOARD_SIZE)
+#define sliderz (knightz + BOARD_SIZE)
+int
+	sliders[2][BOARD_SIZE],
+	contact[2][BOARD_SIZE],
+	pawns[2][BOARD_SIZE];
+int
+	contact_idx[2] = {1, 1},
+	sliders_idx[2],
+	pawns_idx[2];
+int
+	pawnz_idx[2] = {
+		pawnz+COLOR_OFFSET*WHITE,
+		pawnz+COLOR_OFFSET*BLACK
+	},
+	knightz_idx[2] = {
+		knightz+COLOR_OFFSET*WHITE,
+		knightz+COLOR_OFFSET*BLACK
+	},
+	sliderz_idx[2] = {
+		sliderz+COLOR_OFFSET*WHITE,
+		sliderz+COLOR_OFFSET*BLACK
+	};
 
 // used primarily for pintests
 // const int max_distance = H8-A1;
@@ -886,7 +903,7 @@ void test_board_rep(){
 	PIECE piece = b[B6];
 	int piece_list_index = piece >> PLI_OFFSET;
 	SIDE side = piece & COLOR_MASK - 1;
-	ASSERT(pieces[side][piece_list_index] == B6);
+	ASSERT(pieces[side + piece_list_index] == B6);
 }
 
 typedef struct test_position {

@@ -127,17 +127,15 @@ int main(){
 		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
-	puts("--- testing type sizes");
-	printf("%d\n", sizeof(unsigned short));
-	printf("%d\n", sizeof(unsigned int));
-	printf("%d\n", sizeof(unsigned char));
-
-	puts("looking at delta_vec values");
-	printf("%d %d \n", A4 - H3, delta_vec[A4 - H3]);
-	printf("aaaaaa: %d\n", 55 / 8);
-	puts("");
-	int b = 10;
-	printf("b: %d\n", b);
-	asdf(b);
-	printf("b: %b\n", 5 > 2 > 1);
+	int a[2][4] = {
+		{0,1,2,3}, {6,7,8,9},
+	};
+	#define b(x) (a+1)(x)
+	puts("--- testing array offsets");
+	for(int i = 0; i < 4; i++){
+		printf("a[0][i]: %d | a[1][i]: %d\n", a[0][i], a[1][i]);
+	}
+	for(int i = 0; i < 4; i++){
+		printf("b[0][i]: %d | b[1][i]: %d\n", b[0][i], b[1][i]);
+	}
 }
