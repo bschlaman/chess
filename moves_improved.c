@@ -658,10 +658,10 @@ void unit_tests(){
 }
 
 void main(){
-	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	char testFENx[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"; // 7
 	char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
+
 	// TODO: i dont like having to parseFEN between these init steps
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_board(bs);
 	parseFEN(bs, testFEN);
 	init_pieces(bs);
@@ -670,6 +670,7 @@ void main(){
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
+
 	unit_tests();
 }
 

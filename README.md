@@ -213,3 +213,13 @@ In qperft, the piece value _is_ the piece list index.  To get the piece type, a 
 
 #### 10.06.2022
 I have a major problem with the attack and increment vector arrays.  `increment_vector[C5 - H4]` should be 0, as C5 is not reachable by H4.  However, I get a result of 1, since in my 10x12 board representation, C5 and H4 are less than 8 appart (they are, in fact, 5).  Somehow, this hasn't been an issue in terms of legal move generation (honestly I'm not sure how).  But it needs to be fixed.  I need more guard bands such that the H file and A file are at least 8 apart.  Is it really the case that none of the qperft distances can be represented in two or more ways?
+
+#### 11.06.2022
+Today, I've made the following improvements
+1. corrected utility functions like `board_to_vboard`
+1. eliminated many "magic numbers" from the code
+1. switched to a 15x12 board representation
+1. added some eval test positions
+1. organized en passant test positions
+
+But I'm not done yet - the task remains to fundamentally alter the board array to contain unique pieces of type `PIECE`.  Below I will record the major required alterations so I can go back if I need to.
