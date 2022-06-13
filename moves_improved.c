@@ -7,12 +7,15 @@
 
 #define ASSERT(n) \
 if(!(n)){ \
-    printf(RED WHTB "====== ASSERT error ======" reset "\n"); \
-		printf(YEL "%s\n" reset, #n); \
-    printf(RED "file: " reset "%s ", __FILE__); \
-    printf(RED "line: " reset "%d\n", __LINE__); \
-    exit(1); \
+	printf(RED WHTB "====== ASSERT error ======" reset "\n"); \
+	printf(YEL "%s\n" reset, #n); \
+	printf(RED "file: " reset "%s ", __FILE__); \
+	printf(RED "line: " reset "%d\n", __LINE__); \
+	exit(1); \
 }
+#define ERROR(m) \
+fprintf(stderr, RED WHTB "ERROR:" reset " " m "\n"); \
+exit(1);
 
 #define BOARD_SIZE 64
 // VBOARD: virtual board
@@ -59,10 +62,10 @@ int vboard_to_board(int vsq);
 int frToSq64(int file, int rank);
 void print_board(BOARD_STATE *bs, int opt);
 char *get_algebraic(int vsq);
-SIDE getColor(int piece);
 bool on_2nd_rank(int sq, SIDE side);
 bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, SIDE side);
 void test_move_gen();
+void test_parse_FEN();
 void test_board_rep();
 void test_board_to_vboard();
 void test_vboard_to_board();
@@ -195,10 +198,13 @@ typedef unsigned int PIECE;
 // piece & COLOR_MASK - 1 which is gross
 #define COLOR_MASK 0x03
 #define COLOR_OFFSET (1 + BOARD_SIZE * NUM_NON_KING_TYPES)
-PIECE pieces[2 * COLOR_OFFSET];
+// TODO: this is BAD - separate concept of WHITE, pWHITE, and tWHITE :(
+#define pWHITE (WHITE * COLOR_OFFSET)
+#define pBLACK (BLACK * COLOR_OFFSET)
+int pieces[2 * COLOR_OFFSET];
 // start indexes in pieces for each type
 // TODO: using "pawnz" to not break functionality yet
-#define king    (0)
+#define king    (pieces)
 #define pawnz   (king + 1)
 #define knightz (pawnz + BOARD_SIZE)
 #define sliderz (knightz + BOARD_SIZE)
@@ -212,16 +218,16 @@ int
 	pawns_idx[2];
 int
 	pawnz_idx[2] = {
-		pawnz+COLOR_OFFSET*WHITE,
-		pawnz+COLOR_OFFSET*BLACK
+		pWHITE,
+		pBLACK,
 	},
 	knightz_idx[2] = {
-		knightz+COLOR_OFFSET*WHITE,
-		knightz+COLOR_OFFSET*BLACK
+		pWHITE,
+		pBLACK,
 	},
 	sliderz_idx[2] = {
-		sliderz+COLOR_OFFSET*WHITE,
-		sliderz+COLOR_OFFSET*BLACK
+		pWHITE,
+		pBLACK,
 	};
 
 // used primarily for pintests
@@ -672,6 +678,7 @@ void unit_tests(){
 	printf(MAG "testing move generation: " reset "     %s\n", good);
 	test_move_gen();
 	printf(MAG "testing board representation: " reset "%s\n", good);
+	test_parse_FEN();
 	test_board_rep();
 }
 
@@ -777,15 +784,6 @@ void getCastlePermissions(char *sqStrPtr, int cperm){
 	}
 }
 
-int getType(int piece){
-	return (piece - 2) % 6;
-}
-
-// TODO: this is risky for EMPTY squares
-SIDE getColor(int piece){
-	return piece >= bP && piece <= bK;
-}
-
 // TODO: inefficient?
 bool on_2nd_rank(int sq, SIDE side){
 	int offset64 = side == WHITE ? 0 : 40;
@@ -822,7 +820,7 @@ void parse_FEN(BOARD_STATE *bs, char *fen){
 			case '6':
 			case '7':
 			case '8':
-				// piece = tEMPTY;
+				type = NONETYPE;
 				num = *fen - '0';
 				break;
 
@@ -834,21 +832,63 @@ void parse_FEN(BOARD_STATE *bs, char *fen){
 				continue;
 
 			default:
-				printf(RED "Error with FEN\n" reset);
-				exit(1);
+				ERROR("can't parse FEN");
 		}
 
-		// here we are setting the piece list; we do not need to
-		// build the piece itself at this time
-		// for(int i = 0 ; i < num ; i++){
-		// 	int idx = 0;
-		// 	if(piece & tPAWN){
-		// 		pieces[pawnz_idx++];
-		// 	}
-		// 	bs -> board[board_to_vboard(frToSq64(file, rank))] = piece;
-		// 	file++;
-		// }
+		for(int i = 0 ; i < num ; i++){
+			int vboard_sq = board_to_vboard(frToSq64(file, rank));
+			switch(type){
+				case NONETYPE: break;
+				case KING:
+					king[side == WHITE ? pWHITE : pBLACK] = vboard_sq;
+					break;
+				case PAWN:
+					pawnz[pawnz_idx[side]++] = vboard_sq;
+					break;
+				case KNIGHT:
+					knightz[knightz_idx[side]++] = vboard_sq;
+					break;
+				case BISHOP:
+				case ROOK:
+				case QUEEN:
+					sliderz[sliderz_idx[side]++] = vboard_sq;
+					break;
+				default:
+					ERROR("can't set piece array");
+			}
+			file++;
+		}
 		fen++;
+	}
+
+	// stm
+	ASSERT(*fen == 'w' || *fen == 'b');
+	bs -> stm = (*fen == 'w') ? WHITE : BLACK;
+	fen += 2;
+
+	// castling
+	for(int i = 0 ; i < 4 ; i++){
+		if(*fen == ' ') break;
+		switch(*fen){
+			case 'K': bs -> castlePermission |= WKCA; break;
+			case 'Q': bs -> castlePermission |= WQCA; break;
+			case 'k': bs -> castlePermission |= BKCA; break;
+			case 'q': bs -> castlePermission |= BQCA; break;
+			default: break;
+		}
+		fen++;
+	}
+	fen++;
+	ASSERT(bs -> castlePermission >= 0 \
+		&& bs -> castlePermission <= 0xF);
+
+	// en passant
+	if(*fen != '-'){
+		file = fen[0] - 'a' + 1;
+		rank = fen[1] - '0';
+		ASSERT(file >= 1 && file <= 8);
+		ASSERT(rank >= 1 && rank <= 8);
+		bs -> ep_sq = board_to_vboard(frToSq64(file, rank));
 	}
 }
 
@@ -936,6 +976,52 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 		ASSERT(rank >= 1 && rank <= 8);
 		bs -> ep_sq = board_to_vboard(frToSq64(file, rank));
 	}
+}
+
+void test_parse_FEN(){
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
+	// kiwipete position
+	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+
+	init_board(bs);
+	parse_FEN(bs, testFEN);
+
+	ASSERT(king[pWHITE] == E1);
+	ASSERT(king[pBLACK] == E8);
+
+	ASSERT(pawnz[0+pWHITE] == D5);
+	ASSERT(pawnz[0+pBLACK] == A7);
+	ASSERT(pawnz[3+pWHITE] == B2);
+	ASSERT(pawnz[3+pBLACK] == F7);
+	ASSERT(pawnz[pawnz_idx[WHITE]-1] == H2);
+	ASSERT(pawnz[pawnz_idx[BLACK]-1] == H3);
+
+	ASSERT(knightz[0+pWHITE] == E5);
+	ASSERT(knightz[0+pBLACK] == B6);
+	ASSERT(knightz[knightz_idx[WHITE]-1] == C3);
+	ASSERT(knightz[knightz_idx[BLACK]-1] == F6);
+
+	ASSERT(sliderz[0+pWHITE] == F3);
+	ASSERT(sliderz[0+pBLACK] == A8);
+	ASSERT(sliderz[sliderz_idx[WHITE]-1] == H1);
+	ASSERT(sliderz[sliderz_idx[BLACK]-1] == A6);
+
+	ASSERT(bs -> castlePermission & WKCA);
+	ASSERT(bs -> castlePermission & WQCA);
+	ASSERT(bs -> castlePermission & BKCA);
+	ASSERT(bs -> castlePermission & BQCA);
+
+	char testFEN2[] = "r6r/1b2k1bq/8/8/6Pp/8/7B/R3K2R b KQ g3";
+
+	init_board(bs);
+	parse_FEN(bs, testFEN2);
+
+	ASSERT(bs -> castlePermission & WKCA);
+	ASSERT(bs -> castlePermission & WQCA);
+	ASSERT(!(bs -> castlePermission & BKCA));
+	ASSERT(!(bs -> castlePermission & BQCA));
+
+	ASSERT(bs -> ep_sq == G3);
 }
 
 void test_board_rep(){

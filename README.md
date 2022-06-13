@@ -225,5 +225,8 @@ Today, I've made the following improvements
 But I'm not done yet - the task remains to fundamentally alter the board array to contain unique pieces of type `PIECE`.  Below I will record the major required alterations so I can go back if I need to.
 - `init_board` is unchanged
 - comment out `sliders`, `contact`, and `pawns` to avoid unintentional usage
+- rewrite `parse_FEN` to populate the piece list with the proper vboard squares
 
 Note: I won't be able to finish these major changes today, so I'm marking new infrastructure with a "z" as in "pawnz" so that the old code still compiles.
+
+Note: I need to decide of identifiers like `sliders` and `pawns` should be pointers or indexes
