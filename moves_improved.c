@@ -55,8 +55,8 @@ typedef struct {
 } BOARD_STATE;
 
 // util functions
-void parse_FEN(BOARD_STATE *bs, char *fen);
-void parseFEN(BOARD_STATE *bs, char *fen);
+void parse_FEN(BOARD_STATE *bs, const char *fen);
+void parseFEN(BOARD_STATE *bs, const char *fen);
 int board_to_vboard(int sq64);
 int vboard_to_board(int vsq);
 int frToSq64(int file, int rank);
@@ -683,7 +683,7 @@ void unit_tests(){
 }
 
 void main(){
-	char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
+	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
 
 	// TODO: i dont like having to parseFEN between these init steps
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
@@ -791,7 +791,7 @@ bool on_2nd_rank(int sq, SIDE side){
 	return sq64 >= 8 && sq64 <= 15;
 }
 
-void parse_FEN(BOARD_STATE *bs, char *fen){
+void parse_FEN(BOARD_STATE *bs, const char *fen){
 	// starting at a8
 	int rank = 8, file = 1;
 	while(*fen && rank > 0){
@@ -892,7 +892,7 @@ void parse_FEN(BOARD_STATE *bs, char *fen){
 	}
 }
 
-void parseFEN(BOARD_STATE *bs, char *fen){
+void parseFEN(BOARD_STATE *bs, const char *fen){
 	// starting at a8
 	int rank = 8, file = 1;
 	while(*fen && rank > 0){
@@ -981,7 +981,7 @@ void parseFEN(BOARD_STATE *bs, char *fen){
 void test_parse_FEN(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// kiwipete position
-	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+	const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
 	init_board(bs);
 	parse_FEN(bs, testFEN);
@@ -1011,7 +1011,7 @@ void test_parse_FEN(){
 	ASSERT(bs -> castlePermission & BKCA);
 	ASSERT(bs -> castlePermission & BQCA);
 
-	char testFEN2[] = "r6r/1b2k1bq/8/8/6Pp/8/7B/R3K2R b KQ g3";
+	const char testFEN2[] = "r6r/1b2k1bq/8/8/6Pp/8/7B/R3K2R b KQ g3";
 
 	init_board(bs);
 	parse_FEN(bs, testFEN2);
@@ -1027,7 +1027,7 @@ void test_parse_FEN(){
 void test_board_rep(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// kiwipete position
-	char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+	const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
 	init_board(bs);
 	parseFEN(bs, testFEN);
@@ -1065,7 +1065,7 @@ typedef struct {
 	char best_move[8];
 } EVAL_TEST_POSITION;
 
-EVAL_TEST_POSITION etps[] = {
+const EVAL_TEST_POSITION etps[] = {
 	{
 		.tps.desc = "chess puzzle: win queen",
 		.tps.fen = "7Q/8/3pk2p/7P/8/p2q1B2/2p2P2/1bK5 w - -",
@@ -1086,7 +1086,7 @@ EVAL_TEST_POSITION etps[] = {
 	},
 };
 
-TEST_POSITION tps[] = {
+const TEST_POSITION tps[] = {
 	{
 		.desc = "max possible moves",
 		.fen = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -",
