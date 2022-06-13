@@ -52,6 +52,7 @@ typedef struct {
 } BOARD_STATE;
 
 // util functions
+void parse_FEN(BOARD_STATE *bs, char *fen);
 void parseFEN(BOARD_STATE *bs, char *fen);
 int board_to_vboard(int sq64);
 int vboard_to_board(int vsq);
@@ -790,6 +791,65 @@ bool on_2nd_rank(int sq, SIDE side){
 	int offset64 = side == WHITE ? 0 : 40;
 	int sq64 = vboard_to_board(sq) - offset64;
 	return sq64 >= 8 && sq64 <= 15;
+}
+
+void parse_FEN(BOARD_STATE *bs, char *fen){
+	// starting at a8
+	int rank = 8, file = 1;
+	while(*fen && rank > 0){
+		int num = 1;
+		PIECE_TYPE type;
+		SIDE side;
+		switch(*fen){
+			case 'p': side = BLACK; type = PAWN;   break;
+			case 'n': side = BLACK; type = KNIGHT; break;
+			case 'b': side = BLACK; type = BISHOP; break;
+			case 'r': side = BLACK; type = ROOK;   break;
+			case 'q': side = BLACK; type = QUEEN;  break;
+			case 'k': side = BLACK; type = KING;   break;
+			case 'P': side = WHITE; type = PAWN;   break;
+			case 'N': side = WHITE; type = KNIGHT; break;
+			case 'B': side = WHITE; type = BISHOP; break;
+			case 'R': side = WHITE; type = ROOK;   break;
+			case 'Q': side = WHITE; type = QUEEN;  break;
+			case 'K': side = WHITE; type = KING;   break;
+
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+				// piece = tEMPTY;
+				num = *fen - '0';
+				break;
+
+			case '/':
+			case ' ':
+				rank--;
+				file = 1;
+				fen++;
+				continue;
+
+			default:
+				printf(RED "Error with FEN\n" reset);
+				exit(1);
+		}
+
+		// here we are setting the piece list; we do not need to
+		// build the piece itself at this time
+		// for(int i = 0 ; i < num ; i++){
+		// 	int idx = 0;
+		// 	if(piece & tPAWN){
+		// 		pieces[pawnz_idx++];
+		// 	}
+		// 	bs -> board[board_to_vboard(frToSq64(file, rank))] = piece;
+		// 	file++;
+		// }
+		fen++;
+	}
 }
 
 void parseFEN(BOARD_STATE *bs, char *fen){
