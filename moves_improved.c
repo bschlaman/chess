@@ -272,6 +272,27 @@ void init_board(BOARD_STATE *bs){
 	bs -> castlePermission = 0;
 }
 
+void set_board_from_pieces(BOARD_STATE *bs){
+	for(int i = 0; i < sizeof(pieces) / sizeof(pieces[0]); i++){
+		int tside = i <= COLOR_OFFSET ? tWHITE : tBLACK;
+		if(i == 0 || i == COLOR_OFFSET){
+			bs -> board[pieces[i]] = i << PLI_OFFSET & tKING & tside;
+			continue;
+		}
+		int ttype;
+		switch(((i-1) % COLOR_OFFSET) / BOARD_SIZE){
+			case 0: ttype = tPAWN;   break;
+			case 1: ttype = tKNIGHT; break;
+			case 2: ttype = tBISHOP; break;
+			case 3: ttype = tROOK;   break;
+			case 4: ttype = tQUEEN;  break;
+			default:
+				ERROR("can't read from piece array");
+		}
+		bs -> board[pieces[i]] = i << PLI_OFFSET & ttype & tside;
+	}
+}
+
 void init_pieces(BOARD_STATE *bs){
 	memset(sliders_idx, 0, sizeof(sliders_idx));
 	contact_idx[BLACK] = contact_idx[WHITE] = 1;
@@ -686,11 +707,11 @@ void main(){
 	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
 
 	// TODO: i dont like having to parseFEN between these init steps
+	init_vectors();
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_board(bs);
 	parseFEN(bs, testFEN);
 	init_pieces(bs);
-	init_vectors();
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
@@ -792,6 +813,14 @@ bool on_2nd_rank(int sq, SIDE side){
 }
 
 void parse_FEN(BOARD_STATE *bs, const char *fen){
+	// reset piece indices back to their origins
+	pawnz_idx[WHITE] = pWHITE;
+	pawnz_idx[BLACK] = pBLACK;
+	knightz_idx[WHITE] = pWHITE;
+	knightz_idx[BLACK] = pBLACK;
+	sliderz_idx[WHITE] = pWHITE;
+	sliderz_idx[BLACK] = pBLACK;
+
 	// starting at a8
 	int rank = 8, file = 1;
 	while(*fen && rank > 0){
@@ -1025,17 +1054,18 @@ void test_parse_FEN(){
 }
 
 void test_board_rep(){
-	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// kiwipete position
 	const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
+	init_vectors();
+	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_board(bs);
 	parseFEN(bs, testFEN);
-	init_pieces(bs);
-	init_vectors();
+	set_board_from_pieces(bs);
 
 	int *b = bs -> board;
 
+	printf("b[E1]: %u\n", b[E1]);
 	ASSERT(b[E1] & tKING & tWHITE);
 	ASSERT(b[E8] & tKING & tBLACK);
 	ASSERT(b[G7] & tBISHOP & tBLACK);
@@ -1160,12 +1190,12 @@ size_t tpsSize(){
 }
 
 void test_move_gen(){
+	init_vectors();
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	for(int i = 0; i < tpsSize(); i++){
 		init_board(bs);
 		parseFEN(bs, tps[i].fen);
 		init_pieces(bs);
-		init_vectors();
 
 		gen_legal_moves(bs);
 		int num_legal_moves = move_stack_idx;
