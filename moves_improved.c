@@ -212,30 +212,29 @@ typedef unsigned int PIECE;
 	: EMPTY \
 )
 int pieces[2 * COLOR_OFFSET];
-// start indexes in pieces for each type
-// TODO: using "pawnz" to not break functionality yet
+// helper pointers for pieces array
 #define king    (pieces)
-#define pawnz   (king + 1)
-#define knightz (pawnz + BOARD_SIZE)
-#define sliderz (knightz + BOARD_SIZE)
+#define pawns   (king + 1)
+#define knights (pawns + BOARD_SIZE)
+#define sliders (knights + BOARD_SIZE)
 int
-	sliders[2][BOARD_SIZE],
-	contact[2][BOARD_SIZE],
-	pawns[2][BOARD_SIZE];
+	sliders_old[2][BOARD_SIZE],
+	contact_old[2][BOARD_SIZE],
+	pawns_old[2][BOARD_SIZE];
 int
-	contact_idx[2] = {1, 1},
-	sliders_idx[2],
-	pawns_idx[2];
+	contact_idx_old[2] = {1, 1},
+	sliders_idx_old[2],
+	pawns_idx_old[2];
 int
-	pawnz_idx[2] = {
+	pawns_idx[2] = {
 		pWHITE,
 		pBLACK,
 	},
-	knightz_idx[2] = {
+	knights_idx[2] = {
 		pWHITE,
 		pBLACK,
 	},
-	sliderz_idx[2] = {
+	sliders_idx[2] = {
 		pWHITE,
 		pBLACK,
 	};
@@ -289,12 +288,12 @@ void init_globals(BOARD_STATE *bs){
 	for(int i = 0; i < 2 * COLOR_OFFSET; i++)
 		pieces[i] = CAPTURED;
 	// reset piece indices back to their origins
-	pawnz_idx[WHITE] = pWHITE;
-	pawnz_idx[BLACK] = pBLACK;
-	knightz_idx[WHITE] = pWHITE;
-	knightz_idx[BLACK] = pBLACK;
-	sliderz_idx[WHITE] = pWHITE;
-	sliderz_idx[BLACK] = pBLACK;
+	pawns_idx[WHITE] = pWHITE;
+	pawns_idx[BLACK] = pBLACK;
+	knights_idx[WHITE] = pWHITE;
+	knights_idx[BLACK] = pBLACK;
+	sliders_idx[WHITE] = pWHITE;
+	sliders_idx[BLACK] = pBLACK;
 }
 
 void init_board(BOARD_STATE *bs){
@@ -406,9 +405,9 @@ void gen_legal_moves(BOARD_STATE *bs){
 	int csq;
 	int piece;
 
-	// TODO: im trying out pointers here over indexes
-	// decide if i want to switch later
-	int pin_pieces[8], pin_sqs[8];
+	int
+		pin_pieces[numDirections[KING]],
+		pin_sqs[numDirections[KING]];
 	int pin_idx = 0;
 
 	// pintest and distant check test
@@ -751,8 +750,7 @@ void main(){
 	set_board_from_pieces(bs);
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
-	// TODO: next
-	// gen_legal_moves(bs);
+	gen_legal_moves(bs);
 	// print_move_stack(bs);
 
 	// unit_tests();
@@ -901,15 +899,15 @@ void parse_FEN(BOARD_STATE *bs, const char *fen){
 					king[side == WHITE ? pWHITE : pBLACK] = vboard_sq;
 					break;
 				case PAWN:
-					pawnz[pawnz_idx[side]++] = vboard_sq;
+					pawns[pawns_idx[side]++] = vboard_sq;
 					break;
 				case KNIGHT:
-					knightz[knightz_idx[side]++] = vboard_sq;
+					knights[knights_idx[side]++] = vboard_sq;
 					break;
 				case BISHOP:
 				case ROOK:
 				case QUEEN:
-					sliderz[sliderz_idx[side]++] = vboard_sq;
+					sliders[sliders_idx[side]++] = vboard_sq;
 					break;
 				default:
 					ERROR("can't set piece array");
@@ -1047,22 +1045,22 @@ void test_parse_FEN(){
 	ASSERT(king[pWHITE] == E1);
 	ASSERT(king[pBLACK] == E8);
 
-	ASSERT(pawnz[0+pWHITE] == D5);
-	ASSERT(pawnz[0+pBLACK] == A7);
-	ASSERT(pawnz[3+pWHITE] == B2);
-	ASSERT(pawnz[3+pBLACK] == F7);
-	ASSERT(pawnz[pawnz_idx[WHITE]-1] == H2);
-	ASSERT(pawnz[pawnz_idx[BLACK]-1] == H3);
+	ASSERT(pawns[0+pWHITE] == D5);
+	ASSERT(pawns[0+pBLACK] == A7);
+	ASSERT(pawns[3+pWHITE] == B2);
+	ASSERT(pawns[3+pBLACK] == F7);
+	ASSERT(pawns[pawns_idx[WHITE]-1] == H2);
+	ASSERT(pawns[pawns_idx[BLACK]-1] == H3);
 
-	ASSERT(knightz[0+pWHITE] == E5);
-	ASSERT(knightz[0+pBLACK] == B6);
-	ASSERT(knightz[knightz_idx[WHITE]-1] == C3);
-	ASSERT(knightz[knightz_idx[BLACK]-1] == F6);
+	ASSERT(knights[0+pWHITE] == E5);
+	ASSERT(knights[0+pBLACK] == B6);
+	ASSERT(knights[knights_idx[WHITE]-1] == C3);
+	ASSERT(knights[knights_idx[BLACK]-1] == F6);
 
-	ASSERT(sliderz[0+pWHITE] == F3);
-	ASSERT(sliderz[0+pBLACK] == A8);
-	ASSERT(sliderz[sliderz_idx[WHITE]-1] == H1);
-	ASSERT(sliderz[sliderz_idx[BLACK]-1] == A6);
+	ASSERT(sliders[0+pWHITE] == F3);
+	ASSERT(sliders[0+pBLACK] == A8);
+	ASSERT(sliders[sliders_idx[WHITE]-1] == H1);
+	ASSERT(sliders[sliders_idx[BLACK]-1] == A6);
 
 	ASSERT(bs -> castlePermission & WKCA);
 	ASSERT(bs -> castlePermission & WQCA);

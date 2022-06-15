@@ -229,4 +229,6 @@ But I'm not done yet - the task remains to fundamentally alter the board array t
 
 Note: I won't be able to finish these major changes today, so I'm marking new infrastructure with a "z" as in "pawnz" so that the old code still compiles.
 
-Note: I need to decide of identifiers like `sliders` and `pawns` should be pointers or indexes
+
+#### 15.06.2022
+Running into another major problem.  I am keeping sliders together in one section of the pieces array, but I then lose information about the type of slider after setting the pieces array.  When calling `set_board_from_pieces`, I determine the piece type by determining which "bucket" of `BOARD_SIZE` indices the iterator falls in, which can't distinguish between sliders.  Back to the drawing board!  This commit is garbage and probably won't compile, but just saving my work.
