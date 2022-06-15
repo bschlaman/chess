@@ -1131,6 +1131,12 @@ const EVAL_TEST_POSITION etps[] = {
 		.tps.depth = 1,
 		.best_move = "Be2",
 	},
+	{
+		.tps.desc = "famous game with sequence starting with Bxh7 possibly ending with Qd7 winning a bishop",
+		.tps.fen = "r4rk1/1b2bppp/ppq1p3/2ppB2n/5P2/1P1BP3/P1PPQ1PP/R4RK1 w - -",
+		.tps.depth = 1,
+		.best_move = "Bxh7",
+	},
 };
 
 const TEST_POSITION tps[] = {
