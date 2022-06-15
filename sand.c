@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 #include "colors.h"
 
 void initRand(){
@@ -99,11 +100,6 @@ void delta_init(){
 	}
 }
 
-void asdf(int a){
-	a -= 5;
-	printf("a: %d\n", a);
-}
-
 int main(){
 	// =========================
 	// improving move generation
@@ -127,8 +123,6 @@ int main(){
 		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
-	int c[5] = {4};
-	for(int i = 0; i < 5; i++){
-		printf("a: %d\n", c[i]);
-	}
+
+	printf("log2(0): %d\n", (int)log2(0));
 }

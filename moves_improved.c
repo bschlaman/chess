@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <string.h>
+#include <math.h>
 #include "data_improved.c"
 #include "colors.h"
 
@@ -193,14 +193,24 @@ typedef unsigned int PIECE;
 #define tROOK   0x20
 #define tQUEEN  0x40
 #define tKING   0x80
+
 #define NUM_NON_KING_TYPES 5
-// TODO: extracting color from PIECE looks like
-// piece & COLOR_MASK - 1 which is gross
-#define COLOR_MASK 0x03
 #define COLOR_OFFSET (1 + BOARD_SIZE * NUM_NON_KING_TYPES)
+
+#define COLOR_MASK 0x03
+#define TYPE_MASK 0xFF
+// TODO: this is gross
+#define COLOR(p) ((p & COLOR_MASK) - 1)
 // TODO: this is BAD - separate concept of WHITE, pWHITE, and tWHITE :(
 #define pWHITE (WHITE * COLOR_OFFSET)
 #define pBLACK (BLACK * COLOR_OFFSET)
+// temporary backwards compatibility with piece enum (wP, bR, etc.)
+// this allows me to do type_map[TYPE(piece)] -> BISHOP
+//                      pieceChar[TYPE(piece)] -> 'Q'
+#define TYPE(p) ( \
+	p ? (((int)log2((p >> 2) & TYPE_MASK)) + 2) + 6 * COLOR(p) \
+	: EMPTY \
+)
 int pieces[2 * COLOR_OFFSET];
 // start indexes in pieces for each type
 // TODO: using "pawnz" to not break functionality yet
@@ -322,9 +332,9 @@ void set_board_from_pieces(BOARD_STATE *bs){
 }
 
 void init_pieces(BOARD_STATE *bs){
-	memset(sliders_idx, 0, sizeof(sliders_idx));
+	pawns_idx[BLACK] = pawns_idx[WHITE] = 0;
 	contact_idx[BLACK] = contact_idx[WHITE] = 1;
-	memset(pawns_idx, 0, sizeof(pawns_idx));
+	sliders_idx[BLACK] = sliders_idx[WHITE] = 0;
 	ASSERT(sliders_idx[BLACK] == 0);
 	ASSERT(sliders_idx[WHITE] == 0);
 	ASSERT(contact_idx[BLACK] == 1);
@@ -717,6 +727,7 @@ void undo_move(){
 	puts("");
 }
 
+// TODO: actually report success / failures
 void unit_tests(){
 	char *good = "[" GRN " OK " reset"]";
 	char *fail = "[" RED "FAIL" reset"]";
@@ -734,18 +745,17 @@ void unit_tests(){
 void main(){
 	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
 
-	// TODO: i dont like having to parseFEN between these init steps
-	init_vectors();
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	init_board(bs);
-	parseFEN(bs, testFEN);
-	init_pieces(bs);
+	init_globals(bs);
+	parse_FEN(bs, testFEN);
+	set_board_from_pieces(bs);
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
-	gen_legal_moves(bs);
-	print_move_stack(bs);
+	// TODO: next
+	// gen_legal_moves(bs);
+	// print_move_stack(bs);
 
-	unit_tests();
+	// unit_tests();
 }
 
 // UTILS BELOW main
@@ -755,15 +765,14 @@ i make improvements to move generation
 */
 
 void print_board(BOARD_STATE *bs, int opt){
+	// TODO: in the new model, OPT_VBOARD isnt very useful
 	if(opt & OPT_VBOARD){
 		printf(YEL " ---- Virtual Board ---- \n" reset);
 		for(int i = 0; i < VBOARD_SIZE; i++){
 			// same horizontal board flip logic as in invertRows()
 			int inverted_index = (VBOARD_SIZE - VBOARD_WIDTH) + i - 2 * (i - i % VBOARD_WIDTH);
 			printf("%2d ", bs -> board[inverted_index]);
-			if((i + 1) % VBOARD_WIDTH == 0){
-				puts("");
-			}
+			if((i + 1) % VBOARD_WIDTH == 0) puts("");
 		}
 		puts("");
 	}
@@ -772,8 +781,8 @@ void print_board(BOARD_STATE *bs, int opt){
 		for(int rank = 8; rank >= 1; rank--){
 			printf(RED "%d " reset, rank);
 			for(int file = 1; file <= 8; file++){
-				int piece = bs -> board[board_to_vboard(frToSq64(file, rank))];
-				printf("%2c", pieceChar[piece]);
+				PIECE piece = bs -> board[board_to_vboard(frToSq64(file, rank))];
+				printf("%2c", pieceChar[TYPE(piece)]);
 			}
 			puts("");
 		}

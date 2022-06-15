@@ -1,3 +1,5 @@
+CFLAGS="-lm"
+
 all:
 	cc main.c fen.c data.c init.c moves.c eval.c utils.c test.c -o out
 	./out
@@ -19,7 +21,7 @@ sand:
 	cc sand.c data.c -o out_test
 	./out_test
 imp:
-	cc moves_improved.c -o out
+	cc $(CFLAGS) moves_improved.c -o out
 	./out
 clean:
 	rm -f ./out ./out_test ./a.out
