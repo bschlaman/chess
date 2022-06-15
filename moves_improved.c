@@ -262,6 +262,31 @@ void init_vectors(){
 	}
 }
 
+void init_globals(BOARD_STATE *bs){
+	// initialize vector arrays
+	init_vectors();
+
+	// initialize board with GUARD and EMPTY squares
+	for(int i = 0 ; i < VBOARD_SIZE ; i++)
+		bs -> board[i] = tGUARD;
+	for(int i = 0 ; i < BOARD_SIZE ; i++)
+		bs -> board[board_to_vboard(i)] = tEMPTY;
+	bs -> ply = 1;
+	bs -> ep_sq = tGUARD;
+	bs -> castlePermission = 0;
+
+	// reset piece array
+	for(int i = 0; i < 2 * COLOR_OFFSET; i++)
+		pieces[i] = CAPTURED;
+	// reset piece indices back to their origins
+	pawnz_idx[WHITE] = pWHITE;
+	pawnz_idx[BLACK] = pBLACK;
+	knightz_idx[WHITE] = pWHITE;
+	knightz_idx[BLACK] = pBLACK;
+	sliderz_idx[WHITE] = pWHITE;
+	sliderz_idx[BLACK] = pBLACK;
+}
+
 void init_board(BOARD_STATE *bs){
 	for(int i = 0 ; i < VBOARD_SIZE ; i++)
 		bs -> board[i] = OFFBOARD;
@@ -273,10 +298,13 @@ void init_board(BOARD_STATE *bs){
 }
 
 void set_board_from_pieces(BOARD_STATE *bs){
+	// another approach would be to do this for each piece type
+	// b[king[i+pWHITE]] = (i+pWHITE) << PLI_OFFSET & tKING & tWHITE;
 	for(int i = 0; i < sizeof(pieces) / sizeof(pieces[0]); i++){
-		int tside = i <= COLOR_OFFSET ? tWHITE : tBLACK;
-		if(i == 0 || i == COLOR_OFFSET){
-			bs -> board[pieces[i]] = i << PLI_OFFSET & tKING & tside;
+		if(pieces[i] == CAPTURED) continue;
+		int tside = i < pBLACK ? tWHITE : tBLACK;
+		if(i == pWHITE || i == pBLACK){
+			bs -> board[pieces[i]] = i << PLI_OFFSET | tKING | tside;
 			continue;
 		}
 		int ttype;
@@ -289,7 +317,7 @@ void set_board_from_pieces(BOARD_STATE *bs){
 			default:
 				ERROR("can't read from piece array");
 		}
-		bs -> board[pieces[i]] = i << PLI_OFFSET & ttype & tside;
+		bs -> board[pieces[i]] = i << PLI_OFFSET | ttype | tside;
 	}
 }
 
@@ -813,14 +841,6 @@ bool on_2nd_rank(int sq, SIDE side){
 }
 
 void parse_FEN(BOARD_STATE *bs, const char *fen){
-	// reset piece indices back to their origins
-	pawnz_idx[WHITE] = pWHITE;
-	pawnz_idx[BLACK] = pBLACK;
-	knightz_idx[WHITE] = pWHITE;
-	knightz_idx[BLACK] = pBLACK;
-	sliderz_idx[WHITE] = pWHITE;
-	sliderz_idx[BLACK] = pBLACK;
-
 	// starting at a8
 	int rank = 8, file = 1;
 	while(*fen && rank > 0){
@@ -1057,29 +1077,26 @@ void test_board_rep(){
 	// kiwipete position
 	const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-	init_vectors();
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
-	init_board(bs);
-	parseFEN(bs, testFEN);
+	init_globals(bs);
+	parse_FEN(bs, testFEN);
 	set_board_from_pieces(bs);
 
 	int *b = bs -> board;
 
-	printf("b[E1]: %u\n", b[E1]);
-	ASSERT(b[E1] & tKING & tWHITE);
-	ASSERT(b[E8] & tKING & tBLACK);
-	ASSERT(b[G7] & tBISHOP & tBLACK);
-	ASSERT(b[A7] & tPAWN & tBLACK);
-	ASSERT(b[D4] & tEMPTY);
-	// TODO: change these hardcoded values
-	ASSERT(b[0] & tGUARD);
-	ASSERT(b[103] & tGUARD);
-	ASSERT(b[89] & tGUARD);
+	ASSERT(b[E1] & tKING && b[E1] & tWHITE);
+	ASSERT(b[E8] & tKING && b[E8] & tBLACK);
+	ASSERT(b[G7] & tBISHOP && b[G7] & tBLACK);
+	ASSERT(b[A7] & tPAWN && b[A7] & tBLACK);
+	ASSERT(b[D4] == tEMPTY);
+
+	ASSERT(b[0] == tGUARD);
+	ASSERT(b[5] == tGUARD);
+	ASSERT(b[VBOARD_SIZE - 5] == tGUARD);
 
 	PIECE piece = b[B6];
 	int piece_list_index = piece >> PLI_OFFSET;
-	SIDE side = piece & COLOR_MASK - 1;
-	ASSERT(pieces[side + piece_list_index] == B6);
+	ASSERT(pieces[piece_list_index] == B6);
 }
 
 typedef struct test_position {

@@ -127,8 +127,8 @@ int main(){
 		printf("%2d ", delta_vec[i]);
 	}
 	puts("");
-	#define asdf 56
-	int a[asdf];
-	#define b (a+3)
-	printf("b: %d\n", b[1]);
+	int c[5] = {4};
+	for(int i = 0; i < 5; i++){
+		printf("a: %d\n", c[i]);
+	}
 }
