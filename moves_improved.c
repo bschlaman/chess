@@ -305,6 +305,8 @@ void init_globals(BOARD_STATE *bs){
 	knights_idx[BLACK] = pBLACK;
 	sliders_idx[WHITE] = pWHITE;
 	sliders_idx[BLACK] = pBLACK;
+	// reset move stack
+	move_stack_idx = 0;
 }
 
 void init_board(BOARD_STATE *bs){
@@ -436,7 +438,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			// opponent slider is aimed at king
 			// TODO: use a different name than sq_offset
 			int sq_offset = ksq;
-			while((piece = b[sq_offset+=vector]) == EMPTY);
+			while((piece = b[sq_offset+=vector]) == tEMPTY);
 			if(sq_offset == opp_slider_sq){
 				check |= CHECK_SLIDER_DISTANT;
 				check_vector = vector;
@@ -444,7 +446,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			} else if(piece & side_flag){
 				// note: we dont know if its actually pinned yet
 				int pin_sq = sq_offset;
-				while(b[sq_offset+=vector] == EMPTY);
+				while(b[sq_offset+=vector] == tEMPTY);
 				if(sq_offset == opp_slider_sq){
 					// pinned at pin_sq
 					// avoid duplicate arrays with a pin struct?
@@ -457,11 +459,11 @@ void gen_legal_moves(BOARD_STATE *bs){
 					if(piece & tPAWN){
 						csq = pin_sq + fwd;
 						if(vector == TUP || vector == TDN){
-							if(b[csq] == EMPTY){
+							if(b[csq] == tEMPTY){
 								// push pawn 1 sq
 								create_move(pin_sq, csq, piece);
 								// push pawn 2 sq
-								if(on_2nd_rank(pin_sq, side) && b[csq+=fwd] == EMPTY)
+								if(on_2nd_rank(pin_sq, side) && b[csq+=fwd] == tEMPTY)
 									create_move(pin_sq, csq, piece);
 							}
 						} else {
@@ -512,7 +514,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// if in check, ignore pin ray moves
 		move_stack_idx = start_move_stack_idx;
 		// double check
-		if(check & (CHECK_SLIDER_DISTANT | CHECK_KNIGHT)) goto KING_MOVES;
+		if(check | ~(CHECK_SLIDER_DISTANT | CHECK_KNIGHT) == ~0) goto KING_MOVES;
 		// checker is a pawn capturable en passant
 		if(opp_checker_sq == ep_sq - fwd) goto EP_MOVES;
 	} else {
@@ -522,15 +524,15 @@ void gen_legal_moves(BOARD_STATE *bs){
 		int q_perm = side == WHITE ? WQCA : BQCA;
 		int rank_offset = side == WHITE ? 0 : BLACK_RANK_OFFSET;
 		if(cperm & k_perm \
-			&& b[F1+rank_offset] == EMPTY \
-			&& b[G1+rank_offset] == EMPTY \
+			&& b[F1+rank_offset] == tEMPTY \
+			&& b[G1+rank_offset] == tEMPTY \
 			&& !square_attacked_by_side(b, F1+rank_offset, ksq, OFFBOARD, !side)){
 			create_move(ksq, ksq + TRT + TRT, b[ksq]);
 		}
 		if(cperm & q_perm \
-			&& b[B1+rank_offset] == EMPTY \
-			&& b[C1+rank_offset] == EMPTY \
-			&& b[D1+rank_offset] == EMPTY \
+			&& b[B1+rank_offset] == tEMPTY \
+			&& b[C1+rank_offset] == tEMPTY \
+			&& b[D1+rank_offset] == tEMPTY \
 			&& !square_attacked_by_side(b, D1+rank_offset, ksq, OFFBOARD, !side)){
 			create_move(ksq, ksq + TLF + TLF, b[ksq]);
 		}
@@ -541,24 +543,21 @@ void gen_legal_moves(BOARD_STATE *bs){
 	// TODO: use a better var name than csq, since csq implies
 	// TO sq, not FROM sq
 	csq = ep_sq	- fwd + TLF;
-	printf("===== %s \n", get_algebraic(csq));
-	printf("===== %d \n", b[csq]);
-	printf("===== %d \n", (tPAWN|side_flag));
-	if(b[csq] & (tPAWN | side_flag) \
+	if(b[csq] | ~(tPAWN | side_flag) == ~0 \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 	csq = ep_sq	- fwd + TRT;
-	if(b[csq] & (tPAWN | side_flag) \
+	if(b[csq] | ~(tPAWN | side_flag) == ~0 \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 
 	NORMAL_MOVES:
-	if(check & (CHECK_KNIGHT | CHECK_KING_ROSE)){
+	if(check | ~(CHECK_KNIGHT | CHECK_KING_ROSE) == ~0){
 		// can only move the king or capture the checker
 		// pawn capture
-		if(b[opp_checker_sq - fwd + TLF] & (tPAWN | side_flag))
+		if(b[opp_checker_sq - fwd + TLF] | ~(tPAWN | side_flag) == ~0)
 			create_move(opp_checker_sq - fwd + TLF, opp_checker_sq, piece);
-		if(b[opp_checker_sq - fwd + TRT] & (tPAWN | side_flag))
+		if(b[opp_checker_sq - fwd + TRT] | ~(tPAWN | side_flag) == ~0)
 			create_move(opp_checker_sq - fwd + TRT, opp_checker_sq, piece);
 		// knight capture; look through side's knights
 		for(int i = PL_OFF(side); i < knights_idx[side]; i++){
@@ -572,7 +571,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 			if(csq == CAPTURED) continue;
 			if(attack_type[csq - opp_checker_sq] & attack_map[TYPE(b[csq])]){
 				int vector = increment_vector[csq - opp_checker_sq];
-				while(b[csq+=vector] == EMPTY);
+				while(b[csq+=vector] == tEMPTY);
 				if(csq == opp_checker_sq)
 					create_move(sliders[i], opp_checker_sq, M_QUIET);
 			}
@@ -598,9 +597,9 @@ void gen_legal_moves(BOARD_STATE *bs){
 				create_move(pawn_sq, csq, b[pawn_sq]);
 			// pushes
 			csq = pawn_sq + fwd;
-			if(b[csq] == EMPTY){
+			if(b[csq] == tEMPTY){
 				create_move(pawn_sq, csq, b[pawn_sq]);
-				if(on_2nd_rank(pawn_sq, side) && b[csq+=fwd] == EMPTY)
+				if(on_2nd_rank(pawn_sq, side) && b[csq+=fwd] == tEMPTY)
 					create_move(pawn_sq, csq, b[pawn_sq]);
 			}
 		}
@@ -623,7 +622,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 				csq = slider_sq;
 				int vector = translation[type][d];
 				// move along ray
-				while(b[csq+=vector] == EMPTY)
+				while(b[csq+=vector] == tEMPTY)
 					create_move(slider_sq, csq, piece);
 				// capture
 				if(b[csq] != tGUARD && b[csq] & opp_side_flag)
@@ -657,9 +656,11 @@ void gen_legal_moves(BOARD_STATE *bs){
 	for(int d = 0; d < numDirections[KING]; d++){
 		csq = ksq + translation[KING][d];
 		if(b[csq] == tGUARD || b[csq] & side_flag) continue;
+		printf("===== %s \n", get_algebraic(csq));
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
 	}
+	// TODO: THIS IS WRONG!!!!!
 	while(pin_idx > 0)
 		b[pin_sqs[--pin_idx]] = pin_pieces[pin_idx];
 }
@@ -673,9 +674,9 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 	int side_flag = side == WHITE ? tWHITE : tBLACK;
 	// pawns
 	csq = sq - fwd + TLF;
-	if(b[csq] & (tPAWN | side_flag) && csq != ep_captured_sq) return true;
+	if(b[csq] != tGUARD && b[csq] | ~(tPAWN | side_flag) == ~0 && csq != ep_captured_sq) return true;
 	csq = sq - fwd + TRT;
-	if(b[csq] & (tPAWN | side_flag) && csq != ep_captured_sq) return true;
+	if(b[csq] != tGUARD && b[csq] | ~(tPAWN | side_flag) == ~0 && csq != ep_captured_sq) return true;
 	// knights
 	for(int i = PL_OFF(side); i < knights_idx[side]; i++){
 		csq = knights[i];
@@ -697,7 +698,7 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 		if(attack_type[csq - sq] & attack_map[TYPE(b[csq])]){
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
-			while(b[sq_offset+=vector] == EMPTY \
+			while(b[sq_offset+=vector] == tEMPTY \
 				|| sq_offset == ignore_sq || sq_offset == ep_captured_sq);
 			if(sq_offset == csq) return true;
 		}
@@ -751,15 +752,19 @@ void unit_tests(){
 	test_board_to_vboard();
 	printf(MAG "testing vboard_to_board: " reset "     %s\n", good);
 	test_vboard_to_board();
+	printf(MAG "testing FEN parsing: " reset "         %s\n", good);
+	test_parse_FEN();
+	printf(MAG "testing board representation: " reset "%s\n", good);
+	test_board_rep();
 	printf(MAG "testing move generation: " reset "     %s\n", good);
 	test_move_gen();
-	printf(MAG "testing board representation: " reset "%s\n", good);
-	test_parse_FEN();
-	test_board_rep();
 }
 
 void main(){
-	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 6
+	// const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 6
+	// const char testFEN[] = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -";
+	// const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+	const char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3";
 
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_globals(bs);
@@ -1118,10 +1123,10 @@ void test_board_rep(){
 
 	int *b = bs -> board;
 
-	ASSERT(b[E1] & (tKING | tWHITE));
-	ASSERT(b[E8] & (tKING | tBLACK));
-	ASSERT(b[G7] & (tBISHOP | tBLACK));
-	ASSERT(b[A7] & (tPAWN | tBLACK));
+	ASSERT(b[E1] | ~(tKING | tWHITE) == ~0);
+	ASSERT(b[E8] | ~(tKING | tBLACK) == ~0);
+	ASSERT(b[G7] | ~(tBISHOP | tBLACK) == ~0);
+	ASSERT(b[A7] | ~(tPAWN | tBLACK) == ~0);
 	ASSERT(b[D4] == tEMPTY);
 
 	ASSERT(b[0] == tGUARD);
@@ -1182,9 +1187,9 @@ const TEST_POSITION tps[] = {
 	},
 	{
 		.desc = "en passant our pawn vertical pin",
-		.fen = "3r4/8/8/3Pp3/3K3k/8/8/8 w - d6",
+		.fen = "3r4/8/8/3Pp3/3K3k/8/8/8 w - e6",
 		.depth = 1,
-		.nodes = 7,
+		.nodes = 6,
 	},
 	{
 		.desc = "en passant opponent pawn vertical pin",
@@ -1217,7 +1222,7 @@ const TEST_POSITION tps[] = {
 		.nodes = 6,
 	},
 	{
-		.desc = "en passant pawn check",
+		.desc = "en passant pawn check 2",
 		.fen = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3",
 		.depth = 1,
 		.nodes = 8,

@@ -132,6 +132,7 @@ int main(){
 		printf("%d ", p[i]);
 	}
 	puts("");
-	(p+k)
 	printf("%d\n", k - p);
+	printf("%d\n", 54 | ~20);
+	printf("%d\n", ~0);
 }
