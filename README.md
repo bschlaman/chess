@@ -232,3 +232,6 @@ Note: I won't be able to finish these major changes today, so I'm marking new in
 
 #### 15.06.2022
 Running into another major problem.  I am keeping sliders together in one section of the pieces array, but I then lose information about the type of slider after setting the pieces array.  When calling `set_board_from_pieces`, I determine the piece type by determining which "bucket" of `BOARD_SIZE` indices the iterator falls in, which can't distinguish between sliders.  Back to the drawing board!  This commit is garbage and probably won't compile, but just saving my work.
+
+#### 25.06.2022
+I don't see an alternative to tracking piece types other than maintaining another redundant array of types that mirrors the piece list

@@ -124,5 +124,14 @@ int main(){
 	}
 	puts("");
 
-	printf("log2(0): %d\n", (int)log2(0));
+	int p[5];
+	int q[5];
+	#define k (p + 1)
+	k[2] = 34;
+	for(int i = 0; i < 5; i++){
+		printf("%d ", p[i]);
+	}
+	puts("");
+	(p+k)
+	printf("%d\n", k - p);
 }

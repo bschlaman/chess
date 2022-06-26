@@ -200,23 +200,34 @@ typedef unsigned int PIECE;
 #define COLOR_MASK 0x03
 #define TYPE_MASK 0xFF
 // TODO: this is gross
-#define COLOR(p) ((p & COLOR_MASK) - 1)
+#define COLOR(p) (p ? (p & COLOR_MASK) - 1 : NEITHER)
 // TODO: this is BAD - separate concept of WHITE, pWHITE, and tWHITE :(
 #define pWHITE (WHITE * COLOR_OFFSET)
 #define pBLACK (BLACK * COLOR_OFFSET)
+// piece list offset
+#define PL_OFF(side) (side == WHITE ? pWHITE : pBLACK)
 // temporary backwards compatibility with piece enum (wP, bR, etc.)
 // this allows me to do type_map[TYPE(piece)] -> BISHOP
 //                      pieceChar[TYPE(piece)] -> 'Q'
+//                      attack_map[TYPE(piece)] -> A_WPAWN
 #define TYPE(p) ( \
 	p ? (((int)log2((p >> 2) & TYPE_MASK)) + 2) + 6 * COLOR(p) \
 	: EMPTY \
 )
 int pieces[2 * COLOR_OFFSET];
+// needed to distinguish between slider types
+// only needed during parse_FEN -> set_board_from_pieces
+// since otherwise I can use pieces -> board -> TYPE
+PIECE_TYPE types[2 * COLOR_OFFSET];
 // helper pointers for pieces array
-#define king    (pieces)
-#define pawns   (king + 1)
-#define knights (pawns + BOARD_SIZE)
-#define sliders (knights + BOARD_SIZE)
+#define king      (pieces)
+#define pawns     (king + 1)
+#define knights   (pawns + BOARD_SIZE)
+#define sliders   (knights + BOARD_SIZE)
+#define king_t    (types)
+#define pawns_t   (king_t + 1)
+#define knights_t (pawns_t + BOARD_SIZE)
+#define sliders_t (knights_t + BOARD_SIZE)
 int
 	sliders_old[2][BOARD_SIZE],
 	contact_old[2][BOARD_SIZE],
@@ -307,22 +318,20 @@ void init_board(BOARD_STATE *bs){
 }
 
 void set_board_from_pieces(BOARD_STATE *bs){
-	// another approach would be to do this for each piece type
-	// b[king[i+pWHITE]] = (i+pWHITE) << PLI_OFFSET & tKING & tWHITE;
 	for(int i = 0; i < sizeof(pieces) / sizeof(pieces[0]); i++){
 		if(pieces[i] == CAPTURED) continue;
 		int tside = i < pBLACK ? tWHITE : tBLACK;
-		if(i == pWHITE || i == pBLACK){
-			bs -> board[pieces[i]] = i << PLI_OFFSET | tKING | tside;
-			continue;
-		}
 		int ttype;
-		switch(((i-1) % COLOR_OFFSET) / BOARD_SIZE){
-			case 0: ttype = tPAWN;   break;
-			case 1: ttype = tKNIGHT; break;
-			case 2: ttype = tBISHOP; break;
-			case 3: ttype = tROOK;   break;
-			case 4: ttype = tQUEEN;  break;
+		switch(types[i]){
+			// TODO: simplify this once I consolidate tTYPE and TYPE
+			// ttype should just become types[i]
+			case CAPTURED: break;
+			case KING: ttype = tKING; break;
+			case PAWN: ttype = tPAWN; break;
+			case KNIGHT: ttype = tKNIGHT; break;
+			case BISHOP: ttype = tBISHOP; break;
+			case ROOK: ttype = tROOK; break;
+			case QUEEN: ttype = tQUEEN; break;
 			default:
 				ERROR("can't read from piece array");
 		}
@@ -330,7 +339,8 @@ void set_board_from_pieces(BOARD_STATE *bs){
 	}
 }
 
-void init_pieces(BOARD_STATE *bs){
+// no longer needed, as we set pieces before board
+/* void init_pieces(BOARD_STATE *bs){
 	pawns_idx[BLACK] = pawns_idx[WHITE] = 0;
 	contact_idx[BLACK] = contact_idx[WHITE] = 1;
 	sliders_idx[BLACK] = sliders_idx[WHITE] = 0;
@@ -371,14 +381,14 @@ void init_pieces(BOARD_STATE *bs){
 	}
 	ASSERT(bs -> board[contact[BLACK][0]] == bK);
 	ASSERT(bs -> board[contact[WHITE][0]] == wK);
-}
+} */
 
 void print_move_stack(BOARD_STATE *bs){
 	for(int i = 0; i < move_stack_idx; i++){
 		int from = move_stack[i] >> MOVE_FROM_OFFSET;
 		int to = (move_stack[i] >> MOVE_FLAG_NUM_BITS) & MOVE_TO_MASK;
 		printf(CYN "MOVE " reset "%c: %s -> %s\n",
-			pieceChar[bs -> board[from]],
+			pieceChar[TYPE(bs -> board[from])],
 			get_algebraic(from),
 			get_algebraic(to),
 			to
@@ -397,13 +407,17 @@ void gen_legal_moves(BOARD_STATE *bs){
 	int *b = bs -> board;
 	SIDE side = bs -> stm;
 	int ep_sq = bs -> ep_sq;
-	int ksq = contact[side][0];
+	int ksq = king[PL_OFF(side)];
 	int start_move_stack_idx = move_stack_idx;
 	int check = 0, check_vector, opp_checker_sq;
 
 	int fwd = side == WHITE ? TUP : TDN;
+	int side_flag = side == WHITE ? tWHITE : tBLACK;
+	// TODO: can I do (COLOR_MASK & b[csq]) ^ side_flag?
+	int opp_side_flag = side == WHITE ? tBLACK : tWHITE;
+
 	int csq;
-	int piece;
+	PIECE piece;
 
 	int
 		pin_pieces[numDirections[KING]],
@@ -411,12 +425,14 @@ void gen_legal_moves(BOARD_STATE *bs){
 	int pin_idx = 0;
 
 	// pintest and distant check test
-	for(int i = 0; i < sliders_idx[!side]; i++){
-		int opp_slider_sq = sliders[!side][i];
+	for(int i = PL_OFF(!side); i < sliders_idx[!side]; i++){
+		int opp_slider_sq = sliders[i];
 		if(opp_slider_sq == CAPTURED) continue;
 		// check if this piece can attack our king square
 		int vector = increment_vector[opp_slider_sq - ksq];
-		if(attack_type[opp_slider_sq - ksq] & attack_map[b[opp_slider_sq]] & A_DISTANT){
+		if(attack_type[opp_slider_sq - ksq] \
+			& attack_map[TYPE(b[opp_slider_sq])] \
+			& A_DISTANT){
 			// opponent slider is aimed at king
 			// TODO: use a different name than sq_offset
 			int sq_offset = ksq;
@@ -425,7 +441,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 				check |= CHECK_SLIDER_DISTANT;
 				check_vector = vector;
 				opp_checker_sq = opp_slider_sq;
-			} else if(color_map[piece] == side){
+			} else if(piece & side_flag){
 				// note: we dont know if its actually pinned yet
 				int pin_sq = sq_offset;
 				while(b[sq_offset+=vector] == EMPTY);
@@ -434,12 +450,11 @@ void gen_legal_moves(BOARD_STATE *bs){
 					// avoid duplicate arrays with a pin struct?
 					pin_pieces[pin_idx] = piece;
 					pin_sqs[pin_idx++] = pin_sq;
-					// running into a problem here.  I need to know
-					// which of our pieces to mark as pinned
-					// can i just mark the board with a special marker?
-					// TODO 1: this is not ideal - I don't want to touch the board array
-					b[pin_sq] = PINNED;
-					if(piece == wP || piece == bP){
+					// TODO: this could be CAPTURED instead to avoid
+					// pieces[i] == CAPTURED || pieces[i] == PINNED
+					// but I'll keep this here for now
+					pieces[b[pin_sq] >> PLI_OFFSET] = PINNED;
+					if(piece & tPAWN){
 						csq = pin_sq + fwd;
 						if(vector == TUP || vector == TDN){
 							if(b[csq] == EMPTY){
@@ -456,7 +471,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 							if(csq + TRT == opp_slider_sq)
 								create_move(pin_sq, csq + TRT, piece);
 						}
-					} else if(attack_map[piece] & attack_map[b[opp_slider_sq]]){
+					} else if(attack_map[TYPE(piece)] & attack_map[TYPE(b[opp_slider_sq])]){
 						// slider moves along pin vector
 						csq = pin_sq;
 						while((csq+=vector) != opp_slider_sq)
@@ -471,8 +486,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 	} // done with pintest & distant check test
 	// check for contact check by knight
 	// TODO: this could be expensive - can we infer this from previous move?
-	for(int i = 1; i < contact_idx[!side]; i++){
-		csq = contact[!side][i];
+	for(int i = PL_OFF(!side); i < knights_idx[!side]; i++){
+		csq = knights[i];
 		if(csq == CAPTURED) continue;
 		if(attack_type[ksq - csq] & A_KNIGHT){
 			check |= CHECK_KNIGHT;
@@ -484,8 +499,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 	// check for contact check by other
 	for(int i = 0; i < numDirections[KING]; i++){
 		csq = ksq + translation[KING][i];
-		if(color_map[b[csq]] != !side) continue;
-		if(attack_type[ksq - csq] & attack_map[b[csq]]){
+		if(COLOR(b[csq]) != !side) continue;
+		if(attack_type[ksq - csq] & attack_map[TYPE(b[csq])]){
 			check |= CHECK_KING_ROSE;
 			opp_checker_sq = csq;
 			check_vector = increment_vector[ksq - csq];
@@ -497,12 +512,11 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// if in check, ignore pin ray moves
 		move_stack_idx = start_move_stack_idx;
 		// double check
-		if(check & CHECK_SLIDER_DISTANT & CHECK_KNIGHT) goto KING_MOVES;
+		if(check & (CHECK_SLIDER_DISTANT | CHECK_KNIGHT)) goto KING_MOVES;
 		// checker is a pawn capturable en passant
 		if(opp_checker_sq == ep_sq - fwd) goto EP_MOVES;
 	} else {
 		// castling
-		// TODO: castling through check
 		int cperm = bs -> castlePermission;
 		int k_perm = side == WHITE ? WKCA : BKCA;
 		int q_perm = side == WHITE ? WQCA : BQCA;
@@ -524,13 +538,17 @@ void gen_legal_moves(BOARD_STATE *bs){
 
 	EP_MOVES:
 	if(ep_sq == OFFBOARD) goto NORMAL_MOVES;
-	piece = side == WHITE ? wP : bP;
+	// TODO: use a better var name than csq, since csq implies
+	// TO sq, not FROM sq
 	csq = ep_sq	- fwd + TLF;
-	if(b[csq] == piece \
+	printf("===== %s \n", get_algebraic(csq));
+	printf("===== %d \n", b[csq]);
+	printf("===== %d \n", (tPAWN|side_flag));
+	if(b[csq] & (tPAWN | side_flag) \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 	csq = ep_sq	- fwd + TRT;
-	if(b[csq] == piece \
+	if(b[csq] & (tPAWN | side_flag) \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 
@@ -538,26 +556,25 @@ void gen_legal_moves(BOARD_STATE *bs){
 	if(check & (CHECK_KNIGHT | CHECK_KING_ROSE)){
 		// can only move the king or capture the checker
 		// pawn capture
-		piece = side == WHITE ? wP : bP;
-		if(b[opp_checker_sq - fwd + TLF] == piece)
+		if(b[opp_checker_sq - fwd + TLF] & (tPAWN | side_flag))
 			create_move(opp_checker_sq - fwd + TLF, opp_checker_sq, piece);
-		if(b[opp_checker_sq - fwd + TRT] == piece)
+		if(b[opp_checker_sq - fwd + TRT] & (tPAWN | side_flag))
 			create_move(opp_checker_sq - fwd + TRT, opp_checker_sq, piece);
 		// knight capture; look through side's knights
-		for(int i = 1; i < contact_idx[side]; i++){
-			csq = contact[side][i];
+		for(int i = PL_OFF(side); i < knights_idx[side]; i++){
+			csq = knights[i];
 			if(csq == CAPTURED) continue;
 			if(attack_type[csq - opp_checker_sq] & A_KNIGHT)
 				create_move(csq, opp_checker_sq, b[csq]);
 		}
-		for(int i = 0; i < sliders_idx[side]; i++){
-			csq = sliders[side][i];
+		for(int i = PL_OFF(side); i < sliders_idx[side]; i++){
+			csq = sliders[i];
 			if(csq == CAPTURED) continue;
-			if(attack_type[csq - opp_checker_sq] & attack_map[b[csq]]){
+			if(attack_type[csq - opp_checker_sq] & attack_map[TYPE(b[csq])]){
 				int vector = increment_vector[csq - opp_checker_sq];
 				while(b[csq+=vector] == EMPTY);
 				if(csq == opp_checker_sq)
-					create_move(sliders[side][i], opp_checker_sq, b[sliders[side][i]]);
+					create_move(sliders[i], opp_checker_sq, M_QUIET);
 			}
 		}
 		// slider capture; look through side's slider pieces
@@ -566,16 +583,18 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// non-check moves
 		// pawns
 		// TODO: promotions
-		for(int i = 0; i < pawns_idx[side]; i++){
-			int pawn_sq = pawns[side][i];
-			// TODO 1: do I check for pins here? i.e. b[pawn_sq] == PINNED
-			if(pawn_sq == CAPTURED || b[pawn_sq] == PINNED) continue;
+		for(int i = PL_OFF(side); i < pawns_idx[side]; i++){
+			int pawn_sq = pawns[i];
+			if(pawn_sq == CAPTURED || pawn_sq == PINNED) continue;
 			// captures
 			csq = pawn_sq + fwd + TLF;
-			if(b[csq] != OFFBOARD && color_map[b[csq]] == !side)
+			// TODO: i don't want to have to check both tGUARD
+			// and opp_side_flag, but I have to
+			// since tGUARD & COLOR_MASK ~= true
+			if(b[csq] != tGUARD && b[csq] & opp_side_flag)
 				create_move(pawn_sq, csq, b[pawn_sq]);
 			csq = pawn_sq + fwd + TRT;
-			if(b[csq] != OFFBOARD && color_map[b[csq]] == !side)
+			if(b[csq] != tGUARD && b[csq] & opp_side_flag)
 				create_move(pawn_sq, csq, b[pawn_sq]);
 			// pushes
 			csq = pawn_sq + fwd;
@@ -586,22 +605,20 @@ void gen_legal_moves(BOARD_STATE *bs){
 			}
 		}
 		// knights
-		for(int i = 1; i < contact_idx[side]; i++){
-			int knight_sq = contact[side][i];
-			if(knight_sq == CAPTURED) continue;
+		for(int i = PL_OFF(side); i < knights_idx[side]; i++){
+			int knight_sq = knights[i];
+			if(knight_sq == CAPTURED || knight_sq == PINNED) continue;
 			for(int d = 0; d < numDirections[KNIGHT]; d++){
 				csq = knight_sq + translation[KNIGHT][d];
-				// TODO 1: now we have to check for pin here which seems clunky
-				if(b[csq] == OFFBOARD || color_map[b[csq]] == side || b[csq] == PINNED) continue;
+				if(b[csq] == tGUARD || b[csq] & side_flag) continue;
 				create_move(knight_sq, csq, b[knight_sq]);
 			}
 		}
 		// sliders
-		for(int i = 0; i < sliders_idx[side]; i++){
-			int slider_sq = sliders[side][i];
-			piece = b[slider_sq];
+		for(int i = PL_OFF(side); i < sliders_idx[side]; i++){
+			int slider_sq = sliders[i];
 			if(slider_sq == CAPTURED) continue;
-			PIECE_TYPE type = type_map[piece];
+			PIECE_TYPE type = type_map[TYPE(b[slider_sq])];
 			for(int d = 0; d < numDirections[type]; d++){
 				csq = slider_sq;
 				int vector = translation[type][d];
@@ -609,7 +626,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 				while(b[csq+=vector] == EMPTY)
 					create_move(slider_sq, csq, piece);
 				// capture
-				if(color_map[b[csq]] == !side)
+				if(b[csq] != tGUARD && b[csq] & opp_side_flag)
 					create_move(slider_sq, csq, piece);
 			}
 		}
@@ -639,7 +656,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 	KING_MOVES:
 	for(int d = 0; d < numDirections[KING]; d++){
 		csq = ksq + translation[KING][d];
-		if(b[csq] == OFFBOARD || color_map[b[csq]] == side || b[csq] == PINNED) continue;
+		if(b[csq] == tGUARD || b[csq] & side_flag) continue;
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
 	}
@@ -653,21 +670,21 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 	// used for check detection
 	int fwd = side == WHITE ? TUP : TDN;
 	int csq;
+	int side_flag = side == WHITE ? tWHITE : tBLACK;
 	// pawns
-	int piece = side == WHITE ? wP : bP;
 	csq = sq - fwd + TLF;
-	if(b[csq] == piece && csq != ep_captured_sq) return true;
+	if(b[csq] & (tPAWN | side_flag) && csq != ep_captured_sq) return true;
 	csq = sq - fwd + TRT;
-	if(b[csq] == piece && csq != ep_captured_sq) return true;
+	if(b[csq] & (tPAWN | side_flag) && csq != ep_captured_sq) return true;
 	// knights
-	for(int i = 1; i < contact_idx[side]; i++){
-		csq = contact[side][i];
+	for(int i = PL_OFF(side); i < knights_idx[side]; i++){
+		csq = knights[i];
 		if(csq == CAPTURED) continue;
 		if(attack_type[csq - sq] & A_KNIGHT) return true;
 	}
 	// sliders
-	for(int i = 0; i < sliders_idx[side]; i++){
-		csq = sliders[side][i];
+	for(int i = PL_OFF(side); i < sliders_idx[side]; i++){
+		csq = sliders[i];
 		if(csq == CAPTURED) continue;
 		// check for block by pawn that ends up on ep_sq after capture
 		// note that the 0 == 0 case will also be checked here
@@ -677,7 +694,7 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 		if(ep_captured_sq != OFFBOARD \
 			&& increment_vector[csq - sq] \
 			== increment_vector[csq - ep_captured_sq - fwd]) continue;
-		if(attack_type[csq - sq] & attack_map[b[csq]]){
+		if(attack_type[csq - sq] & attack_map[TYPE(b[csq])]){
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
 			while(b[sq_offset+=vector] == EMPTY \
@@ -742,7 +759,7 @@ void unit_tests(){
 }
 
 void main(){
-	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 7
+	const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 6
 
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_globals(bs);
@@ -751,7 +768,7 @@ void main(){
 
 	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
-	// print_move_stack(bs);
+	print_move_stack(bs);
 
 	// unit_tests();
 }
@@ -891,23 +908,33 @@ void parse_FEN(BOARD_STATE *bs, const char *fen){
 				ERROR("can't parse FEN");
 		}
 
-		for(int i = 0 ; i < num ; i++){
+		for(int i = 0; i < num; i++){
 			int vboard_sq = board_to_vboard(frToSq64(file, rank));
 			switch(type){
 				case NONETYPE: break;
 				case KING:
 					king[side == WHITE ? pWHITE : pBLACK] = vboard_sq;
+					king_t[side == WHITE ? pWHITE : pBLACK] = KING;
 					break;
 				case PAWN:
-					pawns[pawns_idx[side]++] = vboard_sq;
+					pawns[pawns_idx[side]] = vboard_sq;
+					pawns_t[pawns_idx[side]++] = PAWN;
 					break;
 				case KNIGHT:
-					knights[knights_idx[side]++] = vboard_sq;
+					knights[knights_idx[side]] = vboard_sq;
+					knights_t[knights_idx[side]++] = KNIGHT;
 					break;
 				case BISHOP:
+					sliders[sliders_idx[side]] = vboard_sq;
+					sliders_t[sliders_idx[side]++] = BISHOP;
+					break;
 				case ROOK:
+					sliders[sliders_idx[side]] = vboard_sq;
+					sliders_t[sliders_idx[side]++] = ROOK;
+					break;
 				case QUEEN:
-					sliders[sliders_idx[side]++] = vboard_sq;
+					sliders[sliders_idx[side]] = vboard_sq;
+					sliders_t[sliders_idx[side]++] = QUEEN;
 					break;
 				default:
 					ERROR("can't set piece array");
@@ -948,7 +975,7 @@ void parse_FEN(BOARD_STATE *bs, const char *fen){
 	}
 }
 
-void parseFEN(BOARD_STATE *bs, const char *fen){
+/* void parseFEN(BOARD_STATE *bs, const char *fen){
 	// starting at a8
 	int rank = 8, file = 1;
 	while(*fen && rank > 0){
@@ -1032,14 +1059,14 @@ void parseFEN(BOARD_STATE *bs, const char *fen){
 		ASSERT(rank >= 1 && rank <= 8);
 		bs -> ep_sq = board_to_vboard(frToSq64(file, rank));
 	}
-}
+} */
 
 void test_parse_FEN(){
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	// kiwipete position
 	const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-	init_board(bs);
+	init_globals(bs);
 	parse_FEN(bs, testFEN);
 
 	ASSERT(king[pWHITE] == E1);
@@ -1069,7 +1096,7 @@ void test_parse_FEN(){
 
 	const char testFEN2[] = "r6r/1b2k1bq/8/8/6Pp/8/7B/R3K2R b KQ g3";
 
-	init_board(bs);
+	init_globals(bs);
 	parse_FEN(bs, testFEN2);
 
 	ASSERT(bs -> castlePermission & WKCA);
@@ -1091,10 +1118,10 @@ void test_board_rep(){
 
 	int *b = bs -> board;
 
-	ASSERT(b[E1] & tKING && b[E1] & tWHITE);
-	ASSERT(b[E8] & tKING && b[E8] & tBLACK);
-	ASSERT(b[G7] & tBISHOP && b[G7] & tBLACK);
-	ASSERT(b[A7] & tPAWN && b[A7] & tBLACK);
+	ASSERT(b[E1] & (tKING | tWHITE));
+	ASSERT(b[E8] & (tKING | tBLACK));
+	ASSERT(b[G7] & (tBISHOP | tBLACK));
+	ASSERT(b[A7] & (tPAWN | tBLACK));
 	ASSERT(b[D4] == tEMPTY);
 
 	ASSERT(b[0] == tGUARD);
@@ -1214,12 +1241,11 @@ size_t tpsSize(){
 }
 
 void test_move_gen(){
-	init_vectors();
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	for(int i = 0; i < tpsSize(); i++){
-		init_board(bs);
-		parseFEN(bs, tps[i].fen);
-		init_pieces(bs);
+		init_globals(bs);
+		parse_FEN(bs, tps[i].fen);
+		set_board_from_pieces(bs);
 
 		gen_legal_moves(bs);
 		int num_legal_moves = move_stack_idx;
