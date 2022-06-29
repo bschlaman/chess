@@ -514,7 +514,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 		// if in check, ignore pin ray moves
 		move_stack_idx = start_move_stack_idx;
 		// double check
-		if(check | ~(CHECK_SLIDER_DISTANT | CHECK_KNIGHT) == ~0) goto KING_MOVES;
+		if(check & CHECK_SLIDER_DISTANT && check & CHECK_KNIGHT) goto KING_MOVES;
 		// checker is a pawn capturable en passant
 		if(opp_checker_sq == ep_sq - fwd) goto EP_MOVES;
 	} else {
@@ -543,21 +543,23 @@ void gen_legal_moves(BOARD_STATE *bs){
 	// TODO: use a better var name than csq, since csq implies
 	// TO sq, not FROM sq
 	csq = ep_sq	- fwd + TLF;
-	if(b[csq] | ~(tPAWN | side_flag) == ~0 \
+	if(b[csq] & tPAWN && b[csq] & side_flag \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 	csq = ep_sq	- fwd + TRT;
-	if(b[csq] | ~(tPAWN | side_flag) == ~0 \
+	if(b[csq] & tPAWN && b[csq] & side_flag \
 		&& !square_attacked_by_side(b, ksq, csq, ep_sq - fwd, !side))
 		create_move(csq, ep_sq, piece);
 
 	NORMAL_MOVES:
-	if(check | ~(CHECK_KNIGHT | CHECK_KING_ROSE) == ~0){
+	if(check & CHECK_KNIGHT || check & CHECK_KING_ROSE){
 		// can only move the king or capture the checker
 		// pawn capture
-		if(b[opp_checker_sq - fwd + TLF] | ~(tPAWN | side_flag) == ~0)
+		if(b[opp_checker_sq - fwd + TLF] & tPAWN \
+			&& b[opp_checker_sq - fwd + TLF] & side_flag)
 			create_move(opp_checker_sq - fwd + TLF, opp_checker_sq, piece);
-		if(b[opp_checker_sq - fwd + TRT] | ~(tPAWN | side_flag) == ~0)
+		if(b[opp_checker_sq - fwd + TRT] & tPAWN \
+			&& b[opp_checker_sq - fwd + TRT] & side_flag)
 			create_move(opp_checker_sq - fwd + TRT, opp_checker_sq, piece);
 		// knight capture; look through side's knights
 		for(int i = PL_OFF(side); i < knights_idx[side]; i++){
@@ -656,7 +658,6 @@ void gen_legal_moves(BOARD_STATE *bs){
 	for(int d = 0; d < numDirections[KING]; d++){
 		csq = ksq + translation[KING][d];
 		if(b[csq] == tGUARD || b[csq] & side_flag) continue;
-		printf("===== %s \n", get_algebraic(csq));
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
 	}
@@ -674,9 +675,14 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 	int side_flag = side == WHITE ? tWHITE : tBLACK;
 	// pawns
 	csq = sq - fwd + TLF;
-	if(b[csq] != tGUARD && b[csq] | ~(tPAWN | side_flag) == ~0 && csq != ep_captured_sq) return true;
+	if(b[csq] != tGUARD \
+		&& b[csq] & tPAWN && b[csq] & side_flag \
+		&& csq != ep_captured_sq) return true;
 	csq = sq - fwd + TRT;
-	if(b[csq] != tGUARD && b[csq] | ~(tPAWN | side_flag) == ~0 && csq != ep_captured_sq) return true;
+	if(b[csq] != tGUARD \
+		&& b[csq] & tPAWN && b[csq] & side_flag \
+		&& csq != ep_captured_sq) return true;
+
 	// knights
 	for(int i = PL_OFF(side); i < knights_idx[side]; i++){
 		csq = knights[i];
@@ -691,10 +697,11 @@ bool square_attacked_by_side(int *b, int sq, int ignore_sq, int ep_captured_sq, 
 		// note that the 0 == 0 case will also be checked here
 		// if csq -> sq and csq -> ep_captured_sq - fwd
 		// are not reachable by attack vector
-		// note: this seems fragile (e.g. A_KNIGHT complications)
+		// note: this seems fragile (e.g. A_KNIGHT complications).
+		// ep_captured_sq in between king and slider
 		if(ep_captured_sq != OFFBOARD \
 			&& increment_vector[csq - sq] \
-			== increment_vector[csq - ep_captured_sq - fwd]) continue;
+			== increment_vector[csq - (ep_captured_sq - fwd)]) continue;
 		if(attack_type[csq - sq] & attack_map[TYPE(b[csq])]){
 			int vector = increment_vector[csq - sq];
 			int sq_offset = sq;
@@ -764,18 +771,18 @@ void main(){
 	// const char testFEN[] = "6b1/8/3k4/2q2Pp1/7K/8/8/8 w - g6"; // 6
 	// const char testFEN[] = "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - -";
 	// const char testFEN[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
-	const char testFEN[] = "8/8/8/2k5/2pP4/8/B7/4K3 b - d3";
+	const char testFEN[] = "8/8/8/4k3/2pP4/8/1B6/4K3 b - d3";
 
 	BOARD_STATE *bs = malloc(sizeof(BOARD_STATE));
 	init_globals(bs);
 	parse_FEN(bs, testFEN);
 	set_board_from_pieces(bs);
 
-	print_board(bs, OPT_VBOARD|OPT_64_BOARD|OPT_BOARD_STATE);
+	print_board(bs, OPT_64_BOARD|OPT_BOARD_STATE);
 	gen_legal_moves(bs);
 	print_move_stack(bs);
 
-	// unit_tests();
+	unit_tests();
 }
 
 // UTILS BELOW main
@@ -807,7 +814,7 @@ void print_board(BOARD_STATE *bs, int opt){
 			puts("");
 		}
 		// print the files
-		printf("\n  ");
+		printf("  ");
 		for(int file = 0; file < 8; file++){
 			printf(RED "%2c" reset, file + 'a');
 		}
@@ -817,6 +824,13 @@ void print_board(BOARD_STATE *bs, int opt){
 		printf(BLU "side to move: " reset "%s\n", bs -> stm == WHITE ? "white" : "black");
 		printf(BLU "ply: " reset "%d\n", bs -> ply);
 		printf(BLU "en passant sq: " reset "%s\n", get_algebraic(bs -> ep_sq));
+		printf(BLU "king in check: " reset "%s\n", square_attacked_by_side(
+			bs -> board,
+			king[PL_OFF(bs -> stm)],
+			OFFBOARD,
+			OFFBOARD,
+			!(bs -> stm)
+		) ? "true" : "false");
 	}
 }
 
@@ -1123,10 +1137,10 @@ void test_board_rep(){
 
 	int *b = bs -> board;
 
-	ASSERT(b[E1] | ~(tKING | tWHITE) == ~0);
-	ASSERT(b[E8] | ~(tKING | tBLACK) == ~0);
-	ASSERT(b[G7] | ~(tBISHOP | tBLACK) == ~0);
-	ASSERT(b[A7] | ~(tPAWN | tBLACK) == ~0);
+	ASSERT(b[E1] & tKING && b[E1] & tWHITE);
+	ASSERT(b[E8] & tKING && b[E8] & tBLACK);
+	ASSERT(b[G7] & tBISHOP && b[G7] & tBLACK);
+	ASSERT(b[A7] & tPAWN && b[A7] & tBLACK);
 	ASSERT(b[D4] == tEMPTY);
 
 	ASSERT(b[0] == tGUARD);
@@ -1189,7 +1203,7 @@ const TEST_POSITION tps[] = {
 		.desc = "en passant our pawn vertical pin",
 		.fen = "3r4/8/8/3Pp3/3K3k/8/8/8 w - e6",
 		.depth = 1,
-		.nodes = 6,
+		.nodes = 7,
 	},
 	{
 		.desc = "en passant opponent pawn vertical pin",
@@ -1260,6 +1274,7 @@ void test_move_gen(){
 		printf("%s\n" reset, num_legal_moves == tps[i].nodes ? GRN "✓" : RED "X");
 		if(tps[i].nodes != num_legal_moves){
 			printf(RED "failed pos:" reset " %s\n", tps[i].desc);
+			printf(RED "fen:       " reset " %s\n", tps[i].fen);
 			print_board(bs, OPT_64_BOARD);
 		}
 		ASSERT(tps[i].nodes == num_legal_moves);
