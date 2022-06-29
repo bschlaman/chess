@@ -450,8 +450,7 @@ void gen_legal_moves(BOARD_STATE *bs){
 				if(sq_offset == opp_slider_sq){
 					// pinned at pin_sq
 					// avoid duplicate arrays with a pin struct?
-					pin_pieces[pin_idx] = piece;
-					pin_sqs[pin_idx++] = pin_sq;
+					pin_pieces[pin_idx++] = piece;
 					// TODO: this could be CAPTURED instead to avoid
 					// pieces[i] == CAPTURED || pieces[i] == PINNED
 					// but I'll keep this here for now
@@ -661,9 +660,8 @@ void gen_legal_moves(BOARD_STATE *bs){
 		if(square_attacked_by_side(b, csq, ksq, OFFBOARD, !side)) continue;
 		create_move(ksq, csq, b[ksq]);
 	}
-	// TODO: THIS IS WRONG!!!!!
 	while(pin_idx > 0)
-		b[pin_sqs[--pin_idx]] = pin_pieces[pin_idx];
+		pieces[pin_pieces[pin_idx] >> PLI_OFFSET] = pin_pieces[--pin_idx];
 }
 
 // TODO: probably a better name than ignore_sq
