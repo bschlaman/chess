@@ -199,6 +199,7 @@ typedef unsigned int PIECE;
 
 #define COLOR_MASK 0x03
 #define TYPE_MASK 0xFF
+#define PIECE_DATA_MASK ((TYPE_MASK << 2) | COLOR_MASK)
 // TODO: this is gross
 #define COLOR(p) (p ? (p & COLOR_MASK) - 1 : NEITHER)
 // TODO: this is BAD - separate concept of WHITE, pWHITE, and tWHITE :(
@@ -718,12 +719,11 @@ void make_move(BOARD_STATE *bs, MOVE move){
 
 	int *b = bs -> board;
 	SIDE side = bs -> stm;
+	int side_flag = side == WHITE ? tWHITE : tBLACK;
 	int fwd = side == WHITE ? TUP : TDN;
-	int captured_piece = move_flag == M_CAPT_EP ? b[to - fwd] : b[to];
-	// another problem here (similar to line 321).
-	// how do I update the piece lists
-	// if pieces of the same type are not differentiated?
-	int piece = b[from];
+
+	PIECE captured_piece = move_flag == M_CAPT_EP ? b[to - fwd] : b[to];
+	PIECE piece = b[from];
 
 	// TODO: is there a better way?  also, can I do move_stack this way?
 	// 1) save irreversible aspects of the move
@@ -736,12 +736,68 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	bs -> ply++;
 
 	// 3) update the board and piece lists
-	b[to] = b[from];
-	b[from] = EMPTY;
+	pieces[piece >> PLI_OFFSET] = to;
+	b[to] = piece;
+	b[from] = tEMPTY;
+	if(move_flag & M_CAPT)
+			pieces[captured_piece >> PLI_OFFSET] = CAPTURED;
 	// special cases
 	switch(move_flag){
-		case M_QUIET: break;
-		case M_CSTL_KING: break;
+		int new_piece_pli, rook_from, rook_to;
+		PIECE rook;
+		case M_QUIET:
+			// double pawn push
+			if(piece & tPAWN && from - to == 2 * fwd)
+				bs -> ep_sq = to - fwd;
+			break;
+		case M_CSTL_KING:
+			rook_from = side == WHITE ? H1 : H8;
+			rook_to = side == WHITE ? F1 : F8;
+			rook = b[rook_from];
+			pieces[rook >> PLI_OFFSET] = rook_to;
+			b[rook_to] = rook;
+			b[rook_to] = tEMPTY;
+			break;
+		case M_CSTL_QUEEN:
+			rook_from = side == WHITE ? A1 : A8;
+			rook_to = side == WHITE ? D1 : D8;
+			rook = b[rook_from];
+			pieces[rook >> PLI_OFFSET] = rook_to;
+			b[rook_to] = rook;
+			b[rook_to] = tEMPTY;
+			break;
+		case M_CAPT: break; // handled before switch
+		case M_CAPT_EP:
+			b[to - fwd] = tEMPTY;
+			break;
+		case M_PROMO_N:
+		case M_CAPT_PROMO_N:
+			pieces[piece >> PLI_OFFSET] = CAPTURED;
+			knights[knights_idx[side]++] = to;
+			new_piece_pli = (knights_idx[side] + (knights - pieces)) << PLI_OFFSET;
+			b[to] = new_piece_pli | tKNIGHT | side_flag;
+			break;
+		case M_PROMO_B:
+		case M_CAPT_PROMO_B:
+			pieces[piece >> PLI_OFFSET] = CAPTURED;
+			sliders[sliders_idx[side]++] = to;
+			new_piece_pli = (sliders_idx[side] + (sliders - pieces)) << PLI_OFFSET;
+			b[to] = new_piece_pli | tBISHOP | side_flag;
+			break;
+		case M_PROMO_R:
+		case M_CAPT_PROMO_R:
+			pieces[piece >> PLI_OFFSET] = CAPTURED;
+			sliders[sliders_idx[side]++] = to;
+			new_piece_pli = (sliders_idx[side] + (sliders - pieces)) << PLI_OFFSET;
+			b[to] = new_piece_pli | tROOK | side_flag;
+			break;
+		case M_PROMO_Q:
+		case M_CAPT_PROMO_Q:
+			pieces[piece >> PLI_OFFSET] = CAPTURED;
+			sliders[sliders_idx[side]++] = to;
+			new_piece_pli = (sliders_idx[side] + (sliders - pieces)) << PLI_OFFSET;
+			b[to] = new_piece_pli | tQUEEN | side_flag;
+			break;
 	}
 }
 
