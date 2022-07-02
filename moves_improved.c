@@ -735,7 +735,29 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	// 2) increment ply
 	bs -> ply++;
 
-	// 3) update the board and piece lists
+	// 3) update side to move
+	bs -> stm = !side;
+
+	// 4) update castle permissions
+	if(piece & tKING){
+		bs -> castlePermission &= side == WHITE ? 3 : 12; // 0011 : 1100
+	} else if(piece & tROOK){
+		if(side == WHITE){
+			if(b -> castlePermission & 8 && from == H1){
+				bs -> castlePermission &= 7;  // 0111
+			} else if(b -> castlePermission & 4 && from == A1){
+				bs -> castlePermission &= 11; // 1011
+			}
+		} else {
+			if(b -> castlePermission & 2 && from == H8){
+				bs -> castlePermission &= 13; // 1101
+			} else if(b -> castlePermission & 1 && from == A8){
+				bs -> castlePermission &= 14; // 1110
+			}
+		}
+	}
+
+	// 5) update the board and piece lists
 	pieces[piece >> PLI_OFFSET] = to;
 	b[to] = piece;
 	b[from] = tEMPTY;
