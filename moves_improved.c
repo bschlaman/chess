@@ -763,7 +763,7 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	b[from] = tEMPTY;
 	if(move_flag & M_CAPT)
 			pieces[captured_piece >> PLI_OFFSET] = CAPTURED;
-	// special cases
+	// 5.1) special cases
 	switch(move_flag){
 		int new_piece_pli, rook_from, rook_to;
 		PIECE rook;
@@ -823,8 +823,30 @@ void make_move(BOARD_STATE *bs, MOVE move){
 	}
 }
 
-void undo_move(){
-	puts("");
+void undo_move(BOARD_STATE *bs){
+	// 1) decrement ply
+	bs -> ply--;
+
+	MOVE_IRREV *mi = &move_stack_irrev[bs -> ply];
+	mi -> ep_sq = bs -> ep_sq;
+	mi -> castle_perms = bs -> castlePermission;
+	mi -> captured_piece = captured_piece;
+}
+
+void perft(BOARD_STATE *bs, int depth){
+	int orig_move_stack_idx = move_stack_idx;
+	int num_nodes = 0;
+
+	gen_legal_moves(bs);
+
+	num_moves = move_stack_idx - orig_move_stack_idx;
+
+	if(depth == 1) return num_moves;
+
+	for(int i = 0; i < num_moves; i++){
+		make_move(bs);
+	}
+
 }
 
 // TODO: actually report success / failures
